@@ -1,0 +1,18 @@
+{
+  "session_start": "2026-03-12 15:17:57.029138",
+  "session_end": "2026-03-12 15:19:52.237762",
+  "investors_processed": 1,
+  "results": [
+    {
+      "investor_name": "Nidhi vaishnav",
+      "linkedin_profile_url": "https://www.linkedin.com/in/nidhivaishnav/",
+      "status": "message_sent",
+      "action_taken": "message",
+      "connected_status": "first_degree",
+      "message_text": "Hi Nidhi \u2014 I\u2019m building ZapPay, a zero-wait fuel payments layer for India\u2019s petrol pumps. We\u2019re starting with a 10\u201320 pump pilot and targeting a category that can scale across 85k+ outlets. Given your investing focus, I\u2019d love to share why we believe ZapPay can become core payments infrastructure for fuel retail in India. Would you be open to a short conversation as we open our seed round?",
+      "notes": "Direct LinkedIn message sent",
+      "errors": [],
+      "sent_at": "2026-03-12 15:19:45.324035"
+    }
+  ]
+}

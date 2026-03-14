@@ -1,0 +1,419 @@
+{
+  "session_start": "2026-03-10 18:43:54.411506",
+  "session_end": "2026-03-10 19:05:44.071714",
+  "companies": [
+    {
+      "company": "BIG Language Solutions",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Varsha Mishra",
+          "designation": "+QA Lead at Big Language Solution || QA Engineer || Automation Engineer || API Testing || Performance Testing",
+          "profile_url": "https://www.linkedin.com/in/varsha-mishra-a3874b11b/"
+        },
+        {
+          "name": "Anuj Kumar Singh",
+          "designation": "+Working at Big Language Solutions as Quality Analyst",
+          "profile_url": "https://www.linkedin.com/in/anuj-kumar-singh-16a87b256/"
+        },
+        {
+          "name": "Vinay Pratap Singh",
+          "designation": "Document Accessibility Specialist | PDF/UA & WCAG Compliance | Remediation ExpertNew",
+          "profile_url": "https://www.linkedin.com/in/vinay-pratap-singh-445971202/"
+        },
+        {
+          "name": "Sourav Dayal",
+          "designation": "+Project ManagerNew",
+          "profile_url": "https://www.linkedin.com/in/sourav-dayal-05b062130/"
+        },
+        {
+          "name": "Sharath S Hebbar",
+          "designation": "Machine Learning Engineer | AI Engineer | Building Scalable AI Solutions | Generative AI | Natural Language Processing | Optimization | Big Data",
+          "profile_url": "https://www.linkedin.com/in/sharath-s-hebbar/"
+        }
+      ]
+    },
+    {
+      "company": "Mitchell Martin Inc.",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Akshith Atluri",
+          "designation": "+Trainee Recruiter at Mitchell",
+          "profile_url": "https://www.linkedin.com/in/akshith-atluri-84608a2bb/"
+        },
+        {
+          "name": "Mahesh Kavali",
+          "designation": "+Trainee Recruiter at Mitchell",
+          "profile_url": "https://www.linkedin.com/in/mahesh-kavali-59631a197/"
+        },
+        {
+          "name": "Vivek Mudaliar",
+          "designation": "+Managing Director",
+          "profile_url": "https://www.linkedin.com/in/vivekmudaliar/"
+        },
+        {
+          "name": "Vijay Nagatota",
+          "designation": "+Senior IT Recuriter at Mitchell Martin Inc.",
+          "profile_url": "https://www.linkedin.com/in/vijay-nagatota-1648b842/"
+        },
+        {
+          "name": "Ravikanth Boddula",
+          "designation": "+Senior Technical Recruiter at Mitchell Martin Inc",
+          "profile_url": "https://www.linkedin.com/in/ravikanth-boddula-48aba089/"
+        }
+      ]
+    },
+    {
+      "company": "Zeta Global",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Anubhav Dutta",
+          "designation": "Data Analytics Professional | IIM Kozhikode \u201827",
+          "profile_url": "https://www.linkedin.com/in/iamanubhavdutta/"
+        },
+        {
+          "name": "Shivendra Pratap Singh",
+          "designation": "SDE 2 at Amazon | Backend Engineering | VIT 2019 | Java and Python | DSA | System Design | Fullstack Developer",
+          "profile_url": "https://www.linkedin.com/in/shivendrasinghprofile/"
+        },
+        {
+          "name": "Chaitanya kanna",
+          "designation": "+Senior Software at Zeta Global",
+          "profile_url": "https://www.linkedin.com/in/chaitanya-kanna-48a210119/"
+        },
+        {
+          "name": "Vijay Karthik",
+          "designation": "Senior Technical Support Engineer at Salesforce",
+          "profile_url": "https://www.linkedin.com/in/k-vijaykarthik/"
+        },
+        {
+          "name": "Jaspreet Kaur",
+          "designation": "SSE at Zeta Global | Co-Founder of Humans of Startups | GHCI Scholar 24 | Ex-Cisco",
+          "profile_url": "https://www.linkedin.com/in/jaspreetkaur96/"
+        }
+      ]
+    },
+    {
+      "company": "Aventior",
+      "people_found": 0,
+      "people": []
+    },
+    {
+      "company": "Beem",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Sathish Beem Rao N",
+          "designation": "+Website Design & Development & SEO Company in chennaiTamil",
+          "profile_url": "https://www.linkedin.com/in/sathish-beem-rao-n-5524361b2/"
+        },
+        {
+          "name": "Beem sai pritham Reddy \u2022 +Working at CapgeminiWarangal, Telangana, IndiaMessage",
+          "designation": "Beem sai pritham Reddy \u2022 +Working at Capgemini",
+          "profile_url": "https://www.linkedin.com/in/prithamreddy/"
+        },
+        {
+          "name": "beem sai",
+          "designation": "+Recently post graduated in master of computer application| open to work",
+          "profile_url": "https://www.linkedin.com/in/beem-sai-b5aab733b/"
+        },
+        {
+          "name": "Beem Rao G R",
+          "designation": "+GIS Analyst at Synchronoss Technologies",
+          "profile_url": "https://www.linkedin.com/in/beemrao/"
+        },
+        {
+          "name": "Beem G",
+          "designation": "+Software Developer | SQL",
+          "profile_url": "https://www.linkedin.com/in/beemgopal/"
+        }
+      ]
+    },
+    {
+      "company": "Acro HR Solutions",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Supriya Ghosh",
+          "designation": "HR Generalist",
+          "profile_url": "https://www.linkedin.com/in/supriya-ghosh-288072208/"
+        },
+        {
+          "name": "Prabhath Bhaskaran",
+          "designation": "+Certified ScrumMaster (CSM) | Experienced Project Manager | Expert in",
+          "profile_url": "https://www.linkedin.com/in/prabhath-bhaskaran/"
+        },
+        {
+          "name": "Paras Ahuja",
+          "designation": "+Accounts Receivable Coordinator at ACRO HR Solutions | Streamlining Cash",
+          "profile_url": "https://www.linkedin.com/in/ahuja-paras/"
+        },
+        {
+          "name": "Sanjana Sunori",
+          "designation": "+Aspiring Data Analyst | Skilled in SQL,",
+          "profile_url": "https://www.linkedin.com/in/sanjana-sunori-2b374124b/"
+        },
+        {
+          "name": "Aagya Katiyar",
+          "designation": "+IT Recruiter",
+          "profile_url": "https://www.linkedin.com/in/aagya-katiyar-009bb7223/"
+        }
+      ]
+    },
+    {
+      "company": "Precisely",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Rajnish Raj",
+          "designation": "Full Stack Java Developer at Precisely",
+          "profile_url": "https://www.linkedin.com/in/therajnishraj/"
+        },
+        {
+          "name": "Siddhartha Roy",
+          "designation": "SDE1 @ Precisely | Ex-Wipro | Python | Data Science | Machine Learning",
+          "profile_url": "https://www.linkedin.com/in/siddhartharoy9/"
+        },
+        {
+          "name": "Srikant Mohanty",
+          "designation": "Senior Software Engineer II at Precisely | Trust in",
+          "profile_url": "https://www.linkedin.com/in/srikant-mohanty/"
+        },
+        {
+          "name": "Prateek Verma",
+          "designation": "SDE 2 @ PreciselyNavi",
+          "profile_url": "https://www.linkedin.com/in/prateek007/"
+        },
+        {
+          "name": "Shruti Garg",
+          "designation": "Software Engineer @Precisely | Ex SDE @AMD",
+          "profile_url": "https://www.linkedin.com/in/shruti-garg-7094151aa/"
+        }
+      ]
+    },
+    {
+      "company": "AYKA Care",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Aakash Yadav",
+          "designation": "CTO at AYKA Care | Turning Healthcare Ideas into Reliable Products",
+          "profile_url": "https://www.linkedin.com/in/aakash-yadav-4111b81b7/"
+        },
+        {
+          "name": "Charchit Sharmaa",
+          "designation": "+Founder & CEO | HealthTech Innovator | Building",
+          "profile_url": "https://www.linkedin.com/in/charchit-sharmaa-ba2073241/"
+        },
+        {
+          "name": "Yajjant Vashisht",
+          "designation": "+Pursuing B.tech in Artificial Intelligence and Machine Learning from Dr Akhilesh Das Gupta Institute Of Professional Studies (GGSIPU). Ex web development intern at Ayka careGreater",
+          "profile_url": "https://www.linkedin.com/in/yajjant-vashisht-6828a9319/"
+        },
+        {
+          "name": "Monika Wadhwani",
+          "designation": "+Software Engineer | Laravel & PHP Specialist | React.js \u2022 Vue.js \u2022 REST APIs \u2022 MySQL | Building Reliable Web & Mobile Apps | Open to New Opportunities",
+          "profile_url": "https://www.linkedin.com/in/monika-wadhwani/"
+        },
+        {
+          "name": "Mahek Sharma",
+          "designation": "+Engineering graduate @ADGIPS | THIRD YEAR | C/C++/python programmer | Coding Enthusiast| Ex Web development intern at Ayka care and WizeWealth",
+          "profile_url": "https://www.linkedin.com/in/mahek-sharma-9a7254317/"
+        }
+      ]
+    },
+    {
+      "company": "AI CERTs\u00ae - India",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Ambar Kumar",
+          "designation": "AI Engineer | Data Scientist | Machine Learning | Deep Learning |",
+          "profile_url": "https://www.linkedin.com/in/ambarkr1012/"
+        },
+        {
+          "name": "SAKSHI WASNIK",
+          "designation": "+PROGRAM MANAGER - AI CERTs || AI AND BLOCKCHAINIndiaMessageCurrent: Team Lead - Program Manager at AI CERTs\u2122",
+          "profile_url": "https://www.linkedin.com/in/sakshi-wasnik-314836226/"
+        },
+        {
+          "name": "Shivendra Bharuka",
+          "designation": "Software Engineer @ Capgemini | Java \u00b7 Spring Boot \u00b7 AWS \u00b7 MySQL | B.Tech in Computer Science (2024) | AI/ML EnthusiastIndiaConnectPast: Technical Program Consultant at AI CERTsAbheeshth Mishra and Shashank Sanket are",
+          "profile_url": "https://www.linkedin.com/in/shivendrabharuka/"
+        },
+        {
+          "name": "Jatin Vaghasia",
+          "designation": "+Sr. Software Developer at AI CERTs",
+          "profile_url": "https://www.linkedin.com/in/jatin-vaghasia-464b3535/"
+        },
+        {
+          "name": "Apurba Manna",
+          "designation": "+Product Engineer at AI CERTs\u00ae | AI/ML | Generative AI | Data Science | Cloud & EdTech Solutions",
+          "profile_url": "https://www.linkedin.com/in/apurba-manna/"
+        }
+      ]
+    },
+    {
+      "company": "DevRabbit IT Solutions",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "poojitha kuppili",
+          "designation": "+MERN Stack Developer (Fresher) | React.js | Node.js | JavaScript | MySQLGreater",
+          "profile_url": "https://www.linkedin.com/in/amulya-kuppili/"
+        },
+        {
+          "name": "SANYASI SAHU",
+          "designation": "+Java Developer at DevRabbit IT Solutions",
+          "profile_url": "https://www.linkedin.com/in/sanyasi-sahu/"
+        },
+        {
+          "name": "Babitha Oleti",
+          "designation": "+Developer(React JS) at DevRabbit IT Solutions",
+          "profile_url": "https://www.linkedin.com/in/babitha-oleti/"
+        },
+        {
+          "name": "Yashwanth Pothuraju",
+          "designation": "+Software QA Engineer | Devrabbit IT Solutions | Skilled in",
+          "profile_url": "https://www.linkedin.com/in/yashwanth-pothuraju-02a8a51a5/"
+        },
+        {
+          "name": "Vinod Kumar",
+          "designation": "+Team Lead | Senior .NET Engineer | Building Scalable Enterprise Apps | Web API \u2022 C# \u2022 AWS \u2022 SQL \u2022 Microservices \u2022 PostgreSQL | 11+ Years Experience",
+          "profile_url": "https://www.linkedin.com/in/iamvinod34/"
+        }
+      ]
+    },
+    {
+      "company": "Netskope",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Karan Pittie",
+          "designation": "Senior Software Engineer at Netskope",
+          "profile_url": "https://www.linkedin.com/in/karan-pittie/"
+        },
+        {
+          "name": "Santanu Kar",
+          "designation": "Sr. Software Engineer at NetskopeIndiaConnectCurrent: Senior Software Engineer at NetskopeDeewanshu Ukey is a",
+          "profile_url": "https://www.linkedin.com/in/santanu-kar-30535a12b/"
+        },
+        {
+          "name": "Pradeep Singh",
+          "designation": "Full Stack developer | AWS Certified Developer Associate",
+          "profile_url": "https://www.linkedin.com/in/pradeeps-dev/"
+        },
+        {
+          "name": "Varun Nirala",
+          "designation": "Staff Engineer | C/C++ Programmer | Ex",
+          "profile_url": "https://www.linkedin.com/in/niralavarun/"
+        },
+        {
+          "name": "Joobi S B",
+          "designation": "Staff Engineer | Zero Trust Access @ Netskope | Speaker",
+          "profile_url": "https://www.linkedin.com/in/joobisb/"
+        }
+      ]
+    },
+    {
+      "company": "Version 1",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Kumar Shanu",
+          "designation": "AI/ML Engineer || Data Scientist \u2022 Pythonista \u2022 Microsoft Certified \u2022 Databricks \u2022 \u2601\ufe0f Microsoft Azure",
+          "profile_url": "https://www.linkedin.com/in/its-kumar/"
+        },
+        {
+          "name": "Sumeet Yadav",
+          "designation": "Senior Software Engineer | Ex SDE-1 @ GimBooks |",
+          "profile_url": "https://www.linkedin.com/in/sumeetkumaryadav/"
+        },
+        {
+          "name": "SUBHENDU ADAK",
+          "designation": "Network Engineer | Version 1 |",
+          "profile_url": "https://www.linkedin.com/in/subhendu-adak-72a7871ba/"
+        },
+        {
+          "name": "Madhu G S",
+          "designation": "+Oracle Cloud Technical Consultant at Version 1",
+          "profile_url": "https://www.linkedin.com/in/madhu-g-s-57945625b/"
+        },
+        {
+          "name": "HIMANSHU VASHISHT",
+          "designation": "Head of EPM- IDC at Version1",
+          "profile_url": "https://www.linkedin.com/in/himanshu-vashisht-b26b2430/"
+        }
+      ]
+    },
+    {
+      "company": "SentiSum",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Aditya Hari Kancharla",
+          "designation": "ML Research Engineer | IIIT",
+          "profile_url": "https://www.linkedin.com/in/k-aditya-hari/"
+        },
+        {
+          "name": "Saswata Deb",
+          "designation": "Member of Technical Staff @",
+          "profile_url": "https://www.linkedin.com/in/saswata-deb-44475b203/"
+        },
+        {
+          "name": "Akshat Akshat",
+          "designation": "MarkovML | LFX\u201923 CNCF - @Harbor | MLH Fellow | 2x GSoC @Zulip | WoC 2.0 - Jina AI | IIIT",
+          "profile_url": "https://www.linkedin.com/in/akshat-akshat/"
+        },
+        {
+          "name": "Rishav Ray",
+          "designation": "Senior Data Scientist@Zepto | Ex-Nykaa",
+          "profile_url": "https://www.linkedin.com/in/rishavray/"
+        },
+        {
+          "name": "Nitesh Singh",
+          "designation": "Computer Science Engineer",
+          "profile_url": "https://www.linkedin.com/in/nitesh-singh-2001/"
+        }
+      ]
+    },
+    {
+      "company": "Millipixels Interactive",
+      "people_found": 0,
+      "people": []
+    },
+    {
+      "company": "GoML",
+      "people_found": 5,
+      "people": [
+        {
+          "name": "Amit Vijay Singh",
+          "designation": "AI/ML Engineer | Machine Learning Engineer @goML",
+          "profile_url": "https://www.linkedin.com/in/amit-vijay-singh/"
+        },
+        {
+          "name": "Bhavesh Kumar",
+          "designation": "Machine Learning Engineer @ goML | AWS ML Expertise | B.Tech AI & DS @ Shiv Nadar University Chennai",
+          "profile_url": "https://www.linkedin.com/in/bhavesh10254/"
+        },
+        {
+          "name": "Gokul Krishnan GK",
+          "designation": "ML engineer @ GoML | Python | Artificial intelligence | Generative AITamil",
+          "profile_url": "https://www.linkedin.com/in/gokul-krish-2398gk25/"
+        },
+        {
+          "name": "Pratyush Srivastava",
+          "designation": "AI/ML Engineer at GoML || AWS Certified || Ex\u2013Data Scientist at Infosys || AI & Data Science(M.",
+          "profile_url": "https://www.linkedin.com/in/pratyush-srivastava2001/"
+        },
+        {
+          "name": "Aman Maskara",
+          "designation": "Senior Data Scientist @Fractal | Gen AI, Data",
+          "profile_url": "https://www.linkedin.com/in/amaskara/"
+        }
+      ]
+    }
+  ]
+}

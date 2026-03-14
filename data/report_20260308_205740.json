@@ -1,0 +1,63 @@
+{
+  "session_start": "2026-03-08 20:50:42.711384",
+  "session_end": "2026-03-08 20:57:40.209938",
+  "total_found": 67,
+  "total_applied": 1,
+  "total_skipped": 0,
+  "total_failed": 2,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Experienced Full Stack Developer",
+      "company": "Omnis AI",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381250510/",
+      "status": "failed",
+      "errors": [
+        "Submit did not result in success confirmation"
+      ],
+      "duration_seconds": 208.46578788757324,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit"
+      ]
+    },
+    {
+      "job_title": "AI/ML Engineer",
+      "company": "BayOne Solutions",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381391769/",
+      "status": "failed",
+      "errors": [
+        "Submit did not result in success confirmation"
+      ],
+      "duration_seconds": 81.42912268638611,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "submit"
+      ]
+    },
+    {
+      "job_title": "Senior AI Software Architect (Immediate Joiner)",
+      "company": "EazyML",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382394693/",
+      "status": "applied",
+      "errors": [],
+      "duration_seconds": 78.71240639686584,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "complete"
+      ]
+    }
+  ]
+}

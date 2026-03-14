@@ -1,0 +1,38 @@
+{
+  "origin": "https://www.linkedin.com/in/qazi-atif-3aab01324/",
+  "result": [
+    {
+      "aria": "More actions",
+      "className": "artdeco-dropdown__trigger artdeco-dropdown__trigger--placement-bottom ember-view txuIrDNnpZVgcDBWnKVTqQZNaZkqtnQPMOAo\n      artdeco-button artdeco-button--secondary artdeco-button--muted\n      artdeco-button--2\n      \n      ",
+      "h": 32,
+      "role": "",
+      "tag": "BUTTON",
+      "text": "More",
+      "w": 70.625,
+      "x": 361.6875,
+      "y": 446
+    },
+    {
+      "aria": "",
+      "className": "optional-action-target-wrapper \n              display-flex flex-column full-width",
+      "h": 63.96875,
+      "role": "",
+      "tag": "A",
+      "text": "Shivam ChaudharyShivam Chaudhary\n          \n      \n      \n      \n    \n  \n                \n    \n        \n    \n\n        \n    \n    \n\n\n    \n  \n          \n  \n            \n                \n    \n      \n      \n        \n          \n      \n        \n    \n\n        Junior Placement Cordinator ll Sophomore @ IIIT-NAYA RAIPUR || ECE Undergrad || DSA EnthusiastJunior Placement Cordinator ll Sophomore @ IIIT-NAYA RAIPUR || ECE Undergrad || DSA Enthusiast",
+      "w": 196,
+      "x": 1036.5,
+      "y": 2060.15625
+    },
+    {
+      "aria": "Recommendation transparency Learn more about Recommended Content.",
+      "className": "ember-view global-footer__link global-footer__link--static t-14 t-bold",
+      "h": 19.984375,
+      "role": "",
+      "tag": "A",
+      "text": "Recommendation transparency",
+      "w": 225.890625,
+      "x": 724.5,
+      "y": 3409.390625
+    }
+  ]
+}

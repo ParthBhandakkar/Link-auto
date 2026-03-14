@@ -1,0 +1,86 @@
+{
+  "session_start": "2026-03-08 20:19:06.575581",
+  "session_end": "2026-03-08 20:27:50.849507",
+  "total_found": 74,
+  "total_applied": 0,
+  "total_skipped": 3,
+  "total_failed": 2,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Experienced Full Stack Developer",
+      "company": "Omnis AI",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381250510/",
+      "status": "failed",
+      "errors": [
+        "Submit did not result in success confirmation"
+      ],
+      "duration_seconds": 301.71808767318726,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit"
+      ]
+    },
+    {
+      "job_title": "Full Stack Flutter Developer",
+      "company": "hotsourced",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4351822139/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "AI/ML Engineer",
+      "company": "BayOne Solutions",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381391769/",
+      "status": "failed",
+      "errors": [
+        "Submit did not result in success confirmation"
+      ],
+      "duration_seconds": 77.8213381767273,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "submit"
+      ]
+    },
+    {
+      "job_title": "Software Engineer",
+      "company": "SociaSpark",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381395543/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Software Engineer - Java Developer",
+      "company": "Binated",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381383909/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    }
+  ]
+}

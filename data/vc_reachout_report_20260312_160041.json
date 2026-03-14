@@ -1,0 +1,40 @@
+{
+  "session_start": "2026-03-12 15:49:09.332642",
+  "session_end": "2026-03-12 16:00:41.987283",
+  "investors_processed": 3,
+  "results": [
+    {
+      "investor_name": "Sarthak Rastogi",
+      "linkedin_profile_url": "https://www.linkedin.com/in/sarthak-rastogi5/",
+      "status": "skipped",
+      "action_taken": "none",
+      "connected_status": "",
+      "message_text": "",
+      "notes": "Neither Message nor Connect action was available on the profile",
+      "errors": [],
+      "sent_at": null
+    },
+    {
+      "investor_name": "Neeraj Tyagi",
+      "linkedin_profile_url": "https://www.linkedin.com/in/neeraj-angel/",
+      "status": "connected",
+      "action_taken": "connect",
+      "connected_status": "first_degree",
+      "message_text": "Hi Neeraj, reaching out as founder of ZapPay. We\u2019re building a zero-wait fuel payments product for India and starting seed discussions. Would value the opportunity to connect.",
+      "notes": "Already connected / first-degree access available",
+      "errors": [],
+      "sent_at": "2026-03-12 15:58:48.226476"
+    },
+    {
+      "investor_name": "Vishal Tiwari",
+      "linkedin_profile_url": "https://www.linkedin.com/in/vishaltiwari8/",
+      "status": "connect_requested",
+      "action_taken": "connect",
+      "connected_status": "pending",
+      "message_text": "Hi Vishal, reaching out as founder of ZapPay. We\u2019re building a zero-wait fuel payments product for India and starting seed discussions. Would value the opportunity to connect.",
+      "notes": "Connection request appears pending",
+      "errors": [],
+      "sent_at": "2026-03-12 16:00:35.244411"
+    }
+  ]
+}

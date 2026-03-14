@@ -1,0 +1,46 @@
+{
+  "selected_contact": {
+    "job_url": "https://www.linkedin.com/jobs/view/4381893092/",
+    "apply_link": "https://www.linkedin.com/jobs/view/4381893092/",
+    "job_title": "Speech AI Engineer \u2013 Real-Time Interpretation & Simultaneous",
+    "company": "BIG Language Solutions",
+    "location": "India (Remote)",
+    "person_index": 1,
+    "person_name": "Varsha Mishra",
+    "person_designation": "#ERROR!",
+    "linkedin_profile_url": "https://www.linkedin.com/in/varsha-mishra-a3874b11b/",
+    "connection_status": "",
+    "connection_requested_at": "",
+    "message_status": "",
+    "message_sent_at": "",
+    "reachout_notes": "",
+    "resume_link": ""
+  },
+  "result": {
+    "contact": {
+      "job_url": "https://www.linkedin.com/jobs/view/4381893092/",
+      "apply_link": "https://www.linkedin.com/jobs/view/4381893092/",
+      "job_title": "Speech AI Engineer \u2013 Real-Time Interpretation & Simultaneous",
+      "company": "BIG Language Solutions",
+      "location": "India (Remote)",
+      "person_index": 1,
+      "person_name": "Varsha Mishra",
+      "person_designation": "#ERROR!",
+      "linkedin_profile_url": "https://www.linkedin.com/in/varsha-mishra-a3874b11b/",
+      "connection_status": "",
+      "connection_requested_at": "",
+      "message_status": "",
+      "message_sent_at": "",
+      "reachout_notes": "",
+      "resume_link": ""
+    },
+    "status": "failed",
+    "action_taken": "connect",
+    "message_text": "Hi Varsha, I came across the Speech AI Engineer \u2013 Real-Time Interpretation & Simultaneous role at BIG Language Solutions. Your profile stood out and I'd love to connect.",
+    "connected_status": "",
+    "notes": "Could not submit connection request",
+    "errors": [],
+    "sent_at": null
+  },
+  "error": null
+}

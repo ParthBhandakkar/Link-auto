@@ -1,0 +1,80 @@
+{
+  "session_start": "2026-03-10 15:30:32.754061",
+  "session_end": "2026-03-10 16:58:17.015741",
+  "total_found": 3,
+  "total_applied": 1,
+  "total_skipped": 1,
+  "total_failed": 1,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Sr. Software Engineer, CASB",
+      "company": "Netskope",
+      "location": "Bengaluru, Karnataka, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4373935425/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior AI Product & Research Engineer (Consultant)",
+      "company": "Version 1",
+      "location": "Mumbai Metropolitan Region (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381729431/",
+      "status": "failed",
+      "errors": [
+        "Could not fully fill form on page 2",
+        "Could not fully fill form on page 7",
+        "Could not fix form errors on page 8",
+        "Could not fully fill form on page 9",
+        "Could not fix form errors on page 9",
+        "Could not fix form errors on page 10",
+        "Could not fully fill form on page 11",
+        "Could not fix form errors on page 11",
+        "Could not fully fill form on page 12",
+        "Could not fix form errors on page 12"
+      ],
+      "duration_seconds": 1626.743004322052,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form"
+      ]
+    },
+    {
+      "job_title": "Senior Product Engineer",
+      "company": "SentiSum",
+      "location": "Bengaluru, Karnataka, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382699437/",
+      "status": "applied",
+      "errors": [
+        "Could not fully fill form on page 4"
+      ],
+      "duration_seconds": 667.8770866394043,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    }
+  ]
+}

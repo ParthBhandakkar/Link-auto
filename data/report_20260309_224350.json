@@ -1,0 +1,206 @@
+{
+  "session_start": "2026-03-09 21:49:08.000977",
+  "session_end": "2026-03-09 22:43:50.270626",
+  "total_found": 58,
+  "total_applied": 0,
+  "total_skipped": 14,
+  "total_failed": 2,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Senior AI Engineer - Remote",
+      "company": "Jitterbit",
+      "location": "Pune/Pimpri-Chinchwad Area (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4338655533/",
+      "status": "failed",
+      "errors": [],
+      "duration_seconds": 742.4213871955872,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form"
+      ]
+    },
+    {
+      "job_title": "DevOps Engineer",
+      "company": "TechEnhance",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381849657/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Flutter Developer",
+      "company": "Cloud Technologies Ltd",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381834971/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Software Engineer IV",
+      "company": "Mitratech",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381734629/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "PowerBI Developer",
+      "company": "RED Global",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381730839/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior Magento Developer (Contract Basis)",
+      "company": "Resource Bazaar Technologies",
+      "location": "Noida, Uttar Pradesh, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381850271/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Software Development Engineer- C#/.Net",
+      "company": "CSG",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381848607/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Java/Python Developer",
+      "company": "Vysetech Solutions Private Limited",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381842923/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": ".NET Software Engineer - Remote Work",
+      "company": "BairesDev",
+      "location": "Delhi, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381848439/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": ".NET Software Engineer - Remote Work",
+      "company": "BairesDev",
+      "location": "Thane, Maharashtra, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381852377/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior Software Engineer I",
+      "company": "Sumo Logic",
+      "location": "Noida, Uttar Pradesh, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382977784/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Python Engineer (R-to-Python Conversion",
+      "company": "SIRO",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381734024/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior Dotnet Developer",
+      "company": "TechGrit",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381831665/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior Software Engineer(Node+React+Go)",
+      "company": "BigStep Technologies",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381723400/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Senior Software Engineer, Guest & Host",
+      "company": "Airbnb",
+      "location": "Bengaluru, Karnataka, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382987202/",
+      "status": "failed",
+      "errors": [],
+      "duration_seconds": 31.994255304336548,
+      "steps": [
+        "open_job",
+        "external_apply"
+      ]
+    },
+    {
+      "job_title": "Frontend Developer",
+      "company": "COD King (Notifik Technologies)",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381823737/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "session_start": "2026-03-12 14:44:10.931623",
+  "session_end": "2026-03-12 14:49:13.795656",
+  "investors_processed": 1,
+  "results": [
+    {
+      "investor_name": "Nidhi vaishnav",
+      "linkedin_profile_url": "https://www.linkedin.com/in/nidhivaishnav/",
+      "status": "skipped",
+      "action_taken": "none",
+      "connected_status": "",
+      "message_text": "",
+      "notes": "Neither Message nor Connect action was available on the profile",
+      "errors": [],
+      "sent_at": null
+    }
+  ]
+}

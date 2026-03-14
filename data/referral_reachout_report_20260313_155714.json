@@ -1,0 +1,58 @@
+{
+  "session_start": "2026-03-13 15:54:13.365478",
+  "session_end": "2026-03-13 15:57:14.896234",
+  "contacts_processed": 3,
+  "results": [
+    {
+      "job_title": "Lead Fullstack Developer (Remote)",
+      "company": "Outsourced",
+      "job_url": "https://www.linkedin.com/jobs/view/4382041930/",
+      "apply_link": "https://www.linkedin.com/jobs/view/4382041930/",
+      "person_index": 1,
+      "person_name": "Qazi Atif",
+      "person_designation": "Human Resources Specialist at Outsourced",
+      "linkedin_profile_url": "https://www.linkedin.com/in/qazi-atif-3aab01324/",
+      "status": "connect_requested",
+      "action_taken": "pending_detected",
+      "connected_status": "pending",
+      "message_text": "",
+      "notes": "Connection request already pending on LinkedIn",
+      "errors": [],
+      "sent_at": null
+    },
+    {
+      "job_title": "Lead Fullstack Developer (Remote)",
+      "company": "Outsourced",
+      "job_url": "https://www.linkedin.com/jobs/view/4382041930/",
+      "apply_link": "https://www.linkedin.com/jobs/view/4382041930/",
+      "person_index": 3,
+      "person_name": "SUSHIL SUKHIJA",
+      "person_designation": "Outsourced Accounting & Audit Support for Global Firms | QuickBooks & Xero | EPCG Consultant | GST Audit",
+      "linkedin_profile_url": "https://www.linkedin.com/in/sushil-sukhija-376a28311/",
+      "status": "connect_requested",
+      "action_taken": "pending_detected",
+      "connected_status": "pending",
+      "message_text": "",
+      "notes": "Connection request already pending on LinkedIn",
+      "errors": [],
+      "sent_at": null
+    },
+    {
+      "job_title": "Lead Fullstack Developer (Remote)",
+      "company": "Outsourced",
+      "job_url": "https://www.linkedin.com/jobs/view/4382041930/",
+      "apply_link": "https://www.linkedin.com/jobs/view/4382041930/",
+      "person_index": 2,
+      "person_name": "Aditya Pardeshi",
+      "person_designation": "Lead e-learning Developer at Outsourced SolutionsPune",
+      "linkedin_profile_url": "https://www.linkedin.com/in/aditya-pardeshi-01b26753/",
+      "status": "skipped",
+      "action_taken": "none",
+      "connected_status": "",
+      "message_text": "Hi Aditya, I came across the Lead Fullstack Developer (Remote) role at Outsourced. Your profile stood out and I'd love to connect.",
+      "notes": "Connect button not available (neither direct nor in More menu)",
+      "errors": [],
+      "sent_at": null
+    }
+  ]
+}

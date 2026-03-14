@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+data/screenshots/
+data/resume/*.pdf
+logs/*.log
+logs/*.html
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+browser_data/
+details/
+.venv/
+venv/
+usr/workdir/

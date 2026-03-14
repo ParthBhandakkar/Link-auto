@@ -1,0 +1,218 @@
+{
+  "session_start": "2026-03-09 03:01:16.957839",
+  "session_end": "2026-03-09 03:24:42.319182",
+  "total_found": 64,
+  "total_applied": 1,
+  "total_skipped": 12,
+  "total_failed": 3,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Senior AI Software Architect (Immediate Joiner)",
+      "company": "EazyML",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382394693/",
+      "status": "failed",
+      "errors": [],
+      "duration_seconds": 75.41425585746765,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form"
+      ]
+    },
+    {
+      "job_title": "Senior Staff Engineer, Machine learning",
+      "company": "Nagarro",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4364494760/",
+      "status": "failed",
+      "errors": [
+        "Could not find external apply button"
+      ],
+      "duration_seconds": 31.323493003845215,
+      "steps": [
+        "open_job",
+        "external_apply"
+      ]
+    },
+    {
+      "job_title": "Senior Staff Networking Software Engineer",
+      "company": "Logic Hire Solutions LTD",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381361472/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "DevOps Engineer",
+      "company": "GROWLOC",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381356689/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Associate \u2013 Business Development",
+      "company": "EdTechDigit Innovations",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381356241/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Oracle OIC Developers",
+      "company": "Atom",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4380096653/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Quality Assurance Automation Engineer",
+      "company": "Professional Labs",
+      "location": "Pune Division, Maharashtra, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381516082/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "One Identity Developer",
+      "company": "MNM HIRETECH PRIVATE LIMITED",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381505149/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Product Analyst",
+      "company": "Binated",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381396399/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Machine Learning Manager \u2014 Applied AI & LLM Systems",
+      "company": "Curately AI, Inc",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381219749/",
+      "status": "applied",
+      "errors": [],
+      "duration_seconds": 170.00110578536987,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    },
+    {
+      "job_title": "DevOps Engineer",
+      "company": "Binated",
+      "location": "Pune/Pimpri-Chinchwad Area (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381388758/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Project Manager (Healthcare Operations)",
+      "company": "Jobgether",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382638036/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Cybersecurity Engineer - Work from Home",
+      "company": "Digicom Technology Solutions",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382606738/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "AI Developer Lead",
+      "company": "r3 Consultant",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382388250/",
+      "status": "failed",
+      "errors": [
+        "Could not find external apply button"
+      ],
+      "duration_seconds": 37.85691428184509,
+      "steps": [
+        "open_job",
+        "external_apply"
+      ]
+    },
+    {
+      "job_title": "Physics Teacher ( IB , AP , IGCSE )",
+      "company": "AP Guru",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381209111/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Java Developer",
+      "company": "MULLY TECHNOLOGY",
+      "location": "Tamil Nadu, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4381381943/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    }
+  ]
+}

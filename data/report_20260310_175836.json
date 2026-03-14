@@ -1,0 +1,58 @@
+{
+  "session_start": "2026-03-10 16:58:52.285588",
+  "session_end": "2026-03-10 17:58:36.692871",
+  "total_found": 2,
+  "total_applied": 2,
+  "total_skipped": 0,
+  "total_failed": 0,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Senior Python Developer",
+      "company": "Millipixels Interactive",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4382282411/",
+      "status": "applied",
+      "errors": [
+        "Could not fully fill form on page 3",
+        "Could not fix form errors on page 3",
+        "Could not fully fill form on page 4"
+      ],
+      "duration_seconds": 932.5063347816467,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    },
+    {
+      "job_title": "Machine Learning Engineer",
+      "company": "GoML",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4383706964/",
+      "status": "applied",
+      "errors": [
+        "Could not fully fill form on page 5"
+      ],
+      "duration_seconds": 853.4891459941864,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    }
+  ]
+}
