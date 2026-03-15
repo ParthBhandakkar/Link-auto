@@ -591,6 +591,26 @@ class LinkedInSearch:
                     break
                 else:
                     job.apply_method = "External"
+                    try:
+                        async with page.expect_popup(timeout=10000) as popup_info:
+                            await btn.click()
+                        popup = await popup_info.value
+                        await popup.wait_for_load_state("domcontentloaded", timeout=15000)
+                        
+                        # LinkedIn sometimes acts as a redirect bridge. Wait until we leave it if so
+                        if "linkedin.com" in popup.url and "externalApply" in popup.url:
+                            try:
+                                await popup.wait_for_url(lambda u: "externalApply" not in u, timeout=10000)
+                            except Exception:
+                                pass # Proceed anyway if timeout
+                                
+                        job.apply_link = popup.url
+                        logger.info(f"Captured external apply link: {job.apply_link}")
+                        await popup.close()
+                    except Exception as e:
+                        logger.warning(f"Failed to capture external link: {e}")
+                        job.apply_link = job.url
+                    break
 
         logger.debug(
             "Job details: easy_apply={}, desc_len={}, salary={}, exp={}",
