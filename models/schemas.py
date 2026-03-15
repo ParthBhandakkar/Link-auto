@@ -60,6 +60,10 @@ class Job(BaseModel):
     resume_link: str = ""
     job_score: int = 0
     application_notes: str = ""
+    # Vector DB / similarity fields
+    similarity_cluster_id: str = ""
+    similar_jobs: str = ""
+    similarity_score: str = ""
 
 
 class ReferralContact(BaseModel):

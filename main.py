@@ -10,6 +10,7 @@ Usage:
     python main.py --outreach     # Find investor/VC leads and write them to the VCs sheet
     python main.py --reachout     # Read VCs from the sheet and message/connect on LinkedIn
         python main.py --job-reachout # Reach out to employees for external-apply jobs
+  python main.py --dashboard    # Launch API + dashboard (ports 8081, 8502)
   python main.py --headless     # Run headless (no browser window)
   python main.py --max-apps 5   # Limit applications per session
     python main.py --max-leads 25 # Limit investor leads for outreach runs
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -69,6 +71,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reach out to employees from external-apply job companies on LinkedIn",
     )
+    mode.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="Launch the Streamlit dashboard (operate bot, view status, job similarity)",
+    )
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -96,7 +103,13 @@ def parse_args() -> argparse.Namespace:
         "--port",
         type=int,
         default=None,
-        help="Server port (default: 8080)",
+        help="API server port (default: 8081)",
+    )
+    parser.add_argument(
+        "--dashboard-port",
+        type=int,
+        default=None,
+        help="Dashboard port (default: 8502)",
     )
     return parser.parse_args()
 
@@ -245,6 +258,76 @@ async def run_job_reachout(headless: bool = False, max_reachouts: int | None = N
         raise
 
 
+def _wait_for_api(api_url: str, timeout: float = 15.0) -> bool:
+    """Poll API /health until ready or timeout."""
+    import time
+
+    try:
+        import requests
+    except ImportError:
+        time.sleep(2)
+        return True
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            r = requests.get(f"{api_url}/health", timeout=2)
+            if r.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
+
+def run_dashboard(port: int | None = None, api_port: int | None = None) -> None:
+    """Launch the API server (if needed) and Streamlit dashboard."""
+    import subprocess
+
+    dashboard_path = Path(__file__).resolve().parent / "dashboard" / "app.py"
+    if not dashboard_path.exists():
+        logger.error("Dashboard not found: {}", dashboard_path)
+        return
+    dash_port = port or settings.dashboard_port
+    server_port = api_port or settings.server_port
+    api_url = f"http://localhost:{server_port}"
+
+    # Start API server in background so dashboard has something to talk to
+    logger.info("Starting API server on port {} (background)", server_port)
+    api_proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "server:app",
+            "--host",
+            settings.server_host,
+            "--port",
+            str(server_port),
+        ],
+        cwd=str(Path(__file__).resolve().parent),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+    )
+    try:
+        if not _wait_for_api(api_url):
+            logger.warning("API server may not be ready yet; dashboard might show errors")
+        logger.info("Launching dashboard at http://localhost:{}", dash_port)
+        env = os.environ.copy()
+        env["DASHBOARD_API_URL"] = api_url
+        subprocess.run(
+            ["streamlit", "run", str(dashboard_path), "--server.port", str(dash_port)],
+            check=True,
+            env=env,
+        )
+    finally:
+        api_proc.terminate()
+        try:
+            api_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            api_proc.kill()
+
+
 def run_server(port: int | None = None) -> None:
     """Start the FastAPI server."""
     import uvicorn
@@ -269,7 +352,7 @@ def main() -> None:
     ║                                                  ║
     ║   🤖  LinkedIn Auto-Apply Bot  v1.0              ║
     ║   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━          ║
-    ║   Powered by Playwright + Kimi K2.5 LLM          ║
+    ║   Powered by agent-browser + Kimi K2.5 LLM      ║
     ║                                                  ║
     ╚══════════════════════════════════════════════════╝
     """)
@@ -298,6 +381,9 @@ def main() -> None:
     elif args.job_reachout:
         logger.info("Mode: JOB-REACHOUT (external jobs → employee referral outreach)")
         asyncio.run(run_job_reachout(headless=args.headless, max_reachouts=args.max_reachouts))
+    elif args.dashboard:
+        logger.info("Mode: DASHBOARD (Streamlit UI)")
+        run_dashboard(port=args.dashboard_port, api_port=args.port)
     else:
         # Start the API server
         run_server(port=args.port)

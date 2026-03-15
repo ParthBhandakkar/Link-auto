@@ -44,6 +44,9 @@ from profile import PROFILE
 from utils.helpers import human_delay
 from utils.csv_exporter import export_jobs_to_csv
 from utils.sheets_exporter import GoogleSheetsExporter
+from utils.vector_db import VectorDBManager
+from utils.job_clustering import JobClustering
+from utils.similarity_engine import SimilarityEngine
 
 
 class Orchestrator:
@@ -85,6 +88,10 @@ class Orchestrator:
         self.referral_messenger = LinkedInReferralMessenger(self.browser)
         self.form_filler = FormFiller(self.browser)
         self.applier = LinkedInApply(self.browser, self.form_filler)
+        self.sheets_exporter = GoogleSheetsExporter()
+        self.vector_db = VectorDBManager()
+        self.job_clustering = JobClustering(vector_db=self.vector_db)
+        self.similarity_engine = SimilarityEngine(vector_db=self.vector_db)
 
         self.stats = SessionStats(session_start=datetime.now())
         self.state = BotState.IDLE
@@ -145,6 +152,9 @@ class Orchestrator:
             if not detailed_jobs:
                 logger.warning("No relevant jobs found after filtering! Aborting scrape pipeline.")
                 return []
+
+            # ── Vector DB: add jobs, cluster, populate similarity ─────────
+            detailed_jobs = await self._add_to_vector_db_and_cluster(detailed_jobs)
 
             # ── Export to CSV ───────────────────────────────────────────
             csv_path, csv_count = export_jobs_to_csv(detailed_jobs)
@@ -207,6 +217,9 @@ class Orchestrator:
             if not detailed_jobs:
                 logger.warning("No relevant jobs found after filtering! Aborting.")
                 return self.stats
+
+            # ── Vector DB: add jobs, cluster, populate similarity ─────────
+            detailed_jobs = await self._add_to_vector_db_and_cluster(detailed_jobs)
 
             # Export scraped data before applying
             csv_path, csv_count = export_jobs_to_csv(detailed_jobs)
@@ -585,6 +598,44 @@ class Orchestrator:
             skipped,
         )
         return relevant_jobs
+
+    async def _add_to_vector_db_and_cluster(self, jobs: list[Job]) -> list[Job]:
+        """
+        Add jobs to vector DB, run clustering, and populate similarity fields.
+        Returns jobs with similarity_cluster_id, similar_jobs, similarity_score set.
+        """
+        if not jobs:
+            return jobs
+        try:
+            for job in jobs:
+                if not job.job_id and job.url:
+                    import re
+                    m = re.search(r"/jobs/view/(\d+)", job.url)
+                    if m:
+                        job.job_id = m.group(1)
+
+            added = self.vector_db.add_jobs_batch(jobs)
+            logger.info("Added {} jobs to vector DB", added)
+
+            cluster_map = self.job_clustering.cluster_jobs()
+            for job in jobs:
+                jid = job.job_id or job.url
+                if not jid:
+                    continue
+                cid = cluster_map.get(jid)
+                if cid is not None:
+                    job.similarity_cluster_id = str(cid)
+                similar_results = self.similarity_engine.find_similar_jobs_by_id(
+                    jid, top_k=5, min_similarity=0.3
+                )
+                if similar_results:
+                    similar_ids = [r[0] for r in similar_results]
+                    job.similar_jobs = ",".join(str(x) for x in similar_ids[:5])
+                    if similar_results[0][2] > 0:
+                        job.similarity_score = f"{similar_results[0][2]:.2f}"
+        except Exception as e:
+            logger.warning("Vector DB / clustering failed (continuing without): {}", str(e)[:200])
+        return jobs
 
     # ── Shared apply loop ───────────────────────────────────────────────
     async def _apply_jobs(self, jobs: list[Job], *, update_sheet: bool = False) -> int:

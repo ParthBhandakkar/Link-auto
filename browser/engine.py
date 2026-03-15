@@ -17,9 +17,13 @@ from config import settings, BROWSER_DATA_DIR, SCREENSHOT_DIR
 
 AGENT_BROWSER_PROFILE_DIR = BROWSER_DATA_DIR / "agent_browser_profile"
 AGENT_BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-AGENT_BROWSER_ROOT = Path(__file__).resolve().parents[2] / "agent-browser" / "agent-browser"
+# agent-browser installed in project via npm (node_modules/agent-browser)
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+AGENT_BROWSER_ROOT = _PROJECT_ROOT / "node_modules" / "agent-browser"
 AGENT_BROWSER_CLIENT = AGENT_BROWSER_ROOT / "bin" / "agent-browser.js"
-AGENT_BROWSER_DAEMON = AGENT_BROWSER_ROOT / "dist" / "daemon.js"
+
+# Initial URL when pipeline starts — LinkedIn feed (auth will handle login if needed)
+INITIAL_URL = "https://www.linkedin.com/feed/"
 
 
 def _selector_nth(selector: str, index: int) -> str:
@@ -234,18 +238,15 @@ class BrowserEngine:
         self.default_timeout = settings.browser_timeout
         self.session_name = f"auto-apply-{os.getpid()}"
         self.profile_dir = AGENT_BROWSER_PROFILE_DIR
-        self._daemon_process: asyncio.subprocess.Process | None = None
-        self._daemon_log_task: asyncio.Task[None] | None = None
         self._owns_temp_profile = False
 
     # ── Lifecycle ───────────────────────────────────────────────────────
     async def start(self) -> AgentPage:
         logger.info("Starting agent-browser engine…")
-        await self._start_daemon()
         self._page = AgentPage(self)
         self._context = AgentContext(self)
         try:
-            await self._run_json(["open", "about:blank"])
+            await self._run_json(["open", INITIAL_URL])
         except Exception as exc:
             if not self._should_retry_with_temp_profile(exc):
                 raise
@@ -257,10 +258,9 @@ class BrowserEngine:
             await self.stop()
             self.profile_dir = Path(tempfile.mkdtemp(prefix="agent_browser_profile_", dir=str(BROWSER_DATA_DIR)))
             self._owns_temp_profile = True
-            await self._start_daemon()
             self._page = AgentPage(self)
             self._context = AgentContext(self)
-            await self._run_json(["open", "about:blank"])
+            await self._run_json(["open", INITIAL_URL])
 
         try:
             await self._run_json(["set", "viewport", "1400", "900"])
@@ -276,22 +276,6 @@ class BrowserEngine:
             await self._run_json(["close"], timeout=5000)
         except Exception:
             pass
-        if self._daemon_process is not None:
-            try:
-                if self._daemon_process.returncode is None:
-                    self._daemon_process.terminate()
-                    await asyncio.wait_for(self._daemon_process.wait(), timeout=5)
-            except Exception:
-                try:
-                    self._daemon_process.kill()
-                except Exception:
-                    pass
-            self._daemon_process = None
-        if self._daemon_log_task is not None:
-            self._daemon_log_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await self._daemon_log_task
-            self._daemon_log_task = None
         self._page = None
         self._context = None
         if self._owns_temp_profile and self.profile_dir.exists():
@@ -368,115 +352,6 @@ class BrowserEngine:
             "profile",
         )
         return any(marker in message for marker in retry_markers)
-
-    async def _start_daemon(self) -> None:
-        if not AGENT_BROWSER_DAEMON.exists():
-            raise RuntimeError(
-                f"agent-browser daemon not found: {AGENT_BROWSER_DAEMON}. Build the local checkout first."
-            )
-        if self._daemon_process is not None and self._daemon_process.returncode is None:
-            return
-
-        base_session = self.session_name
-        for attempt in range(8):
-            candidate_session = base_session if attempt == 0 else f"{base_session}-{attempt}"
-            process, log_task = await self._launch_daemon_process(candidate_session)
-            port = self._session_port(candidate_session)
-
-            try:
-                await self._wait_for_daemon_port(process, port, timeout=10.0)
-                self.session_name = candidate_session
-                self._daemon_process = process
-                self._daemon_log_task = log_task
-                logger.info(
-                    "Agent-browser daemon ready for session {} on port {}",
-                    self.session_name,
-                    port,
-                )
-                return
-            except Exception as exc:
-                logger.debug(
-                    "agent-browser daemon startup failed for session {} on port {}: {}",
-                    candidate_session,
-                    port,
-                    str(exc)[:200],
-                )
-                if log_task is not None:
-                    log_task.cancel()
-                try:
-                    if process.returncode is None:
-                        process.terminate()
-                        await asyncio.wait_for(process.wait(), timeout=2)
-                except Exception:
-                    try:
-                        process.kill()
-                    except Exception:
-                        pass
-
-        raise RuntimeError("agent-browser daemon could not bind to a usable Windows session port")
-
-    async def _launch_daemon_process(
-        self,
-        session_name: str,
-    ) -> tuple[asyncio.subprocess.Process, asyncio.Task[None] | None]:
-        env = os.environ.copy()
-        env["AGENT_BROWSER_DAEMON"] = "1"
-        env["AGENT_BROWSER_SESSION"] = session_name
-        env.setdefault("AGENT_BROWSER_DEBUG", "1")
-
-        process = await asyncio.create_subprocess_exec(
-            "node",
-            str(AGENT_BROWSER_DAEMON),
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(AGENT_BROWSER_ROOT),
-            env=env,
-        )
-        log_task = None
-        if process.stderr is not None:
-            log_task = asyncio.create_task(self._drain_daemon_logs(process.stderr))
-        return process, log_task
-
-    async def _wait_for_daemon_port(
-        self,
-        process: asyncio.subprocess.Process,
-        port: int,
-        timeout: float,
-    ) -> None:
-        deadline = asyncio.get_event_loop().time() + timeout
-        while asyncio.get_event_loop().time() < deadline:
-            if process.returncode is not None:
-                raise RuntimeError(f"daemon exited with code {process.returncode}")
-            try:
-                reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection("127.0.0.1", port),
-                    timeout=0.5,
-                )
-                writer.close()
-                await writer.wait_closed()
-                return
-            except Exception:
-                await asyncio.sleep(0.2)
-        raise RuntimeError(f"timed out waiting for daemon port {port}")
-
-    def _session_port(self, session_name: str) -> int:
-        hash_value = 0
-        for char in session_name:
-            hash_value = ((hash_value << 5) - hash_value + ord(char)) & 0xFFFFFFFF
-        signed_hash = hash_value if hash_value < 0x80000000 else hash_value - 0x100000000
-        return 49152 + (abs(signed_hash) % 16383)
-
-    async def _drain_daemon_logs(self, stream: asyncio.StreamReader) -> None:
-        try:
-            while True:
-                line = await stream.readline()
-                if not line:
-                    return
-                text = line.decode("utf-8", errors="ignore").strip()
-                if text:
-                    logger.debug("agent-browser daemon: {}", text[:500])
-        except asyncio.CancelledError:
-            return
 
     def _wrap_locator_eval(self, selector: str, expression: str) -> str:
         safe_selector = json.dumps(selector)

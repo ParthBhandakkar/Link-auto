@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import Optional
 
 from loguru import logger
-from playwright.async_api import Locator
 
-from browser.engine import BrowserEngine
+from browser.engine import AgentLocator, BrowserEngine
 from config import RESUME_DIR
 from llm.client import llm_client
 from llm.prompts import (
@@ -240,7 +239,7 @@ class FormFiller:
 
         return fields
 
-    async def _parse_input_field(self, el: Locator, field_type: str) -> Optional[FormField]:
+    async def _parse_input_field(self, el: AgentLocator, field_type: str) -> Optional[FormField]:
         """Parse an input or textarea element into a FormField."""
         try:
             name = await el.get_attribute("name") or ""
@@ -267,7 +266,7 @@ class FormFiller:
         except Exception:
             return None
 
-    async def _parse_select_field(self, el: Locator) -> Optional[FormField]:
+    async def _parse_select_field(self, el: AgentLocator) -> Optional[FormField]:
         """Parse a <select> element."""
         try:
             name = await el.get_attribute("name") or ""
@@ -356,7 +355,7 @@ class FormFiller:
             ".jobs-easy-apply-modal input[type='radio']"
         )
         radio_count = await radios.count()
-        grouped: dict[str, list[Locator]] = {}
+        grouped: dict[str, list[AgentLocator]] = {}
         for i in range(radio_count):
             radio = radios.nth(i)
             try:
@@ -413,7 +412,7 @@ class FormFiller:
 
         return fields
 
-    async def _parse_checkbox_field(self, el: Locator) -> Optional[FormField]:
+    async def _parse_checkbox_field(self, el: AgentLocator) -> Optional[FormField]:
         """Parse a checkbox field."""
         try:
             label = await self._find_label_for_element(el)
@@ -446,7 +445,7 @@ class FormFiller:
                 return first
         return cleaned
 
-    async def _find_label_for_element(self, el: Locator) -> str:
+    async def _find_label_for_element(self, el: AgentLocator) -> str:
         """Find the label text associated with a form element."""
         page = self.browser.page
         try:
@@ -997,7 +996,7 @@ class FormFiller:
             answer = self._fix_yes_no_answer(field, answer)
             answer_lower = answer.lower().strip()
 
-            async def click_matching_option(scope: Locator) -> bool:
+            async def click_matching_option(scope: AgentLocator) -> bool:
                 radio_inputs = scope.locator("input[type='radio']")
                 count = await radio_inputs.count()
                 for i in range(count):

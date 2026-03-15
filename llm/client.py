@@ -23,6 +23,10 @@ class LLMClient:
 
     def __init__(self) -> None:
         provider = settings.llm_provider
+        # Fall back to Ollama if Kimi is selected but API key is missing
+        if provider == "kimi" and not (settings.kimi_api_key or "").strip():
+            logger.info("KIMI_API_KEY missing — falling back to Ollama")
+            provider = "ollama"
         if provider == "kimi":
             self._client = AsyncOpenAI(
                 api_key=settings.kimi_api_key,

@@ -1,6 +1,6 @@
 # LinkedIn Auto-Apply Bot
 
-Automated LinkedIn job application bot powered by **Playwright** (mouse/keyboard control) and **Kimi K2.5 LLM** for intelligent form filling.
+Automated LinkedIn job application bot powered by **agent-browser** (mouse/keyboard control) and **Kimi K2.5 LLM** for intelligent form filling.
 
 ## Features
 
@@ -13,6 +13,8 @@ Automated LinkedIn job application bot powered by **Playwright** (mouse/keyboard
 - **Cover Letter Generation**: Auto-generates tailored cover letters when required
 - **Session Persistence**: Browser data is saved so you stay logged in across sessions
 - **FastAPI Server**: REST API for starting, pausing, stopping, and monitoring the bot
+- **Streamlit Dashboard**: Operate the bot, view status, job similarity, and clusters
+- **Vector Database**: ChromaDB + SentenceTransformer for job similarity and clustering
 - **Detailed Reporting**: JSON reports of every application with status, errors, and timing
 
 ## Architecture
@@ -25,7 +27,7 @@ auto_apply/
 ├── config.py            # Configuration management
 ├── profile.py           # Your personal/professional details
 ├── browser/
-│   ├── engine.py        # Playwright browser with mouse/keyboard helpers
+│   ├── engine.py        # Agent-browser wrapper with mouse/keyboard helpers
 ├── linkedin/
 │   ├── auth.py          # Login & session management
 │   ├── search.py        # Job search & listing extraction
@@ -38,7 +40,14 @@ auto_apply/
 │   └── schemas.py       # Pydantic data models
 ├── utils/
 │   ├── logger.py        # Loguru logging setup
-│   └── helpers.py       # Utility functions
+│   ├── helpers.py       # Utility functions
+│   ├── vector_db.py     # ChromaDB job embeddings
+│   ├── job_similarity.py # Embedding text generator
+│   ├── similarity_engine.py # Multi-dimensional scoring
+│   └── job_clustering.py   # Job clustering (Agglomerative/DBSCAN)
+├── dashboard/
+│   └── app.py           # Streamlit dashboard
+├── scripts/             # CLI: query_similar_jobs, analyze_clusters, maintain_vector_db
 └── data/
     ├── resume/          # Your resume file(s)
     └── screenshots/     # Error/debug screenshots
@@ -48,10 +57,19 @@ auto_apply/
 
 ### 1. Install Dependencies
 
+**Python:**
 ```bash
-cd auto_apply
+cd Link-auto
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-playwright install chromium
+```
+
+**agent-browser (browser automation):**
+```bash
+npm install
+npx agent-browser install   # Downloads Chrome (first time only)
 ```
 
 ### 2. Configure Environment
@@ -63,7 +81,7 @@ cp .env.example .env
 # Edit .env with your credentials:
 # - LINKEDIN_EMAIL
 # - LINKEDIN_PASSWORD
-# - KIMI_API_KEY (from https://platform.moonshot.cn)
+# - KIMI_API_KEY (optional — if missing, falls back to Ollama; ensure Ollama is running)
 ```
 
 ### 3. Add Your Resume
@@ -93,6 +111,12 @@ python main.py --run
 python main.py --run --headless
 ```
 
+**Option D: Dashboard**
+```bash
+python main.py --dashboard
+```
+Then open http://localhost:8501. Ensure the FastAPI server is running on port 8080 for pipeline control.
+
 ## API Endpoints
 
 | Method | Endpoint    | Description                          |
@@ -105,6 +129,10 @@ python main.py --run --headless
 | POST   | `/resume`   | Resume after pause                   |
 | GET    | `/results`  | List all application results         |
 | GET    | `/health`   | Health check                         |
+| GET    | `/jobs/similar` | Find similar jobs (job_id or query) |
+| GET    | `/clusters` | List job clusters                    |
+| GET    | `/clusters/{id}` | Jobs in a cluster               |
+| GET    | `/vector-db/stats` | Vector DB job count             |
 
 ### POST /run — Body (optional)
 ```json
@@ -169,6 +197,15 @@ Edit the `job_search_keywords` list in `profile.py`.
 
 ### Adjust Anti-Detection
 Edit `browser/engine.py` to modify user agent, viewport, or stealth settings.
+
+## Vector Database and Similarity
+
+Jobs are embedded and stored in ChromaDB for similarity search and clustering. See [docs/VECTOR_DATABASE_GUIDE.md](docs/VECTOR_DATABASE_GUIDE.md) and [docs/SIMILARITY_API.md](docs/SIMILARITY_API.md).
+
+**CLI scripts:**
+- `python scripts/query_similar_jobs.py --job-id 4381380387 --top-k 10`
+- `python scripts/analyze_clusters.py --export clusters.json`
+- `python scripts/maintain_vector_db.py --stats`
 
 ## Important Notes
 

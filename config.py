@@ -15,11 +15,12 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 RESUME_DIR = DATA_DIR / "resume"
 SCREENSHOT_DIR = DATA_DIR / "screenshots"
+VECTORS_DIR = DATA_DIR / "vectors"
 LOG_DIR = BASE_DIR / "logs"
 BROWSER_DATA_DIR = BASE_DIR / "browser_data"
 
 # Make sure all required dirs exist
-for d in (DATA_DIR, RESUME_DIR, SCREENSHOT_DIR, LOG_DIR, BROWSER_DATA_DIR):
+for d in (DATA_DIR, RESUME_DIR, SCREENSHOT_DIR, VECTORS_DIR, LOG_DIR, BROWSER_DATA_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -46,7 +47,8 @@ class Settings(BaseSettings):
 
     # ── Server ──────────────────────────────────────────────────────────
     server_host: str = "0.0.0.0"
-    server_port: int = 8080
+    server_port: int = 8081
+    dashboard_port: int = 8502
 
     # ── Browser ─────────────────────────────────────────────────────────
     headless: bool = False
@@ -69,6 +71,10 @@ class Settings(BaseSettings):
     # ── Outreach / Investor Discovery ──────────────────────────────────
     vc_target_results: int = 60
     vc_reachout_batch_size: int = 10
+
+    # ── Vector Database ────────────────────────────────────────────────
+    vector_db_path: str = ""
+    embedding_model: str = "all-MiniLM-L6-v2"
 
     class Config:
         env_file = str(BASE_DIR / ".env")

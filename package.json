@@ -1,0 +1,28 @@
+{
+  "name": "link-auto",
+  "version": "1.0.0",
+  "description": "Automated LinkedIn job application bot powered by **agent-browser** (mouse/keyboard control) and **Kimi K2.5 LLM** for intelligent form filling.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ParthBhandakkar/Link-auto.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ParthBhandakkar/Link-auto/issues"
+  },
+  "homepage": "https://github.com/ParthBhandakkar/Link-auto#readme",
+  "dependencies": {
+    "agent-browser": "^0.20.10"
+  }
+}

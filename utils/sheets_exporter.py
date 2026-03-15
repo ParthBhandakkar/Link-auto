@@ -41,6 +41,9 @@ BASE_SHEET_COLUMNS = [
     "resume_link",
     "job_score",
     "application_notes",
+    "similarity_cluster_id",
+    "similar_jobs",
+    "similarity_score",
 ]
 
 PEOPLE_COLUMNS = [
@@ -122,6 +125,9 @@ def _job_to_row(job: "Job") -> list[str]:
         _safe(job.resume_link),
         str(job.job_score or 0),
         _safe(job.application_notes),
+        _safe(getattr(job, "similarity_cluster_id", "")),
+        _safe(getattr(job, "similar_jobs", "")),
+        _safe(getattr(job, "similarity_score", "")),
     ]
     row.extend([""] * (len(PEOPLE_COLUMNS) + len(PEOPLE_OUTREACH_COLUMNS)))
     return row
@@ -151,6 +157,9 @@ def _job_to_record(job: "Job") -> dict[str, str]:
         "resume_link": _safe(job.resume_link),
         "job_score": str(job.job_score or 0),
         "application_notes": _safe(job.application_notes),
+        "similarity_cluster_id": _safe(getattr(job, "similarity_cluster_id", "")),
+        "similar_jobs": _safe(getattr(job, "similar_jobs", "")),
+        "similarity_score": _safe(getattr(job, "similarity_score", "")),
     }
 
     for col in PEOPLE_COLUMNS + PEOPLE_OUTREACH_COLUMNS:

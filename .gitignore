@@ -10,8 +10,12 @@ dist/
 build/
 .pytest_cache/
 browser_data/
+data/vectors/
+data/report_*.json
 details/
 .venv/
 venv/
+node_modules/
 usr/workdir/
 credentials.json
+client_secret.json

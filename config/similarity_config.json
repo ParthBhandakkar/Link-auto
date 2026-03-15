@@ -1,0 +1,15 @@
+{
+  "weights": {
+    "text": 0.40,
+    "skills": 0.25,
+    "tech_stack": 0.20,
+    "experience": 0.10,
+    "industry": 0.05
+  },
+  "min_similarity_threshold": 0.3,
+  "clustering": {
+    "similarity_threshold": 0.7,
+    "min_cluster_size": 2,
+    "algorithm": "agglomerative"
+  }
+}
