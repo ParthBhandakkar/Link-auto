@@ -55,13 +55,15 @@ auto_apply/
 
 ## Quick Start
 
+**TL;DR:** Activate venv, run `python main.py --dashboard`, open http://localhost:8502, click "Run Full Pipeline".
+
 ### 1. Install Dependencies
 
 **Python:**
 ```bash
 cd Link-auto
-python -m venv .venv
-.venv\Scripts\activate   # Windows
+python -m venv venv
+venv\Scripts\activate   # Windows
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -71,6 +73,12 @@ pip install -r requirements.txt
 npm install
 npx agent-browser install   # Downloads Chrome (first time only)
 ```
+
+**Vector DB (optional, for job similarity and clustering):**
+```bash
+pip install chromadb sentence-transformers
+```
+If not installed, the dashboard will show "Vector DB not available" but the bot still works.
 
 ### 2. Configure Environment
 
@@ -92,30 +100,32 @@ Place your resume PDF in either:
 
 ### 4. Run
 
-**Option A: Start the API server**
+**Option A: Dashboard (recommended)**
+```bash
+python main.py --dashboard
+```
+Opens the Streamlit dashboard at http://localhost:8502. The API server (port 8081) starts automatically in the background. Use the dashboard to run the pipeline, scrape, apply, view status, and explore job similarity/clusters.
+
+**Option B: API server only**
 ```bash
 python main.py
 ```
-Then trigger the pipeline via API:
+Starts the FastAPI server on http://localhost:8081. Trigger the pipeline via API:
 ```bash
-curl -X POST http://localhost:8080/run
+curl -X POST http://localhost:8081/run
 ```
 
-**Option B: Run directly (no server)**
+**Option C: Run directly (no server)**
 ```bash
 python main.py --run
 ```
 
-**Option C: Headless mode**
+**Option D: Headless mode**
 ```bash
 python main.py --run --headless
 ```
 
-**Option D: Dashboard**
-```bash
-python main.py --dashboard
-```
-Then open http://localhost:8501. Ensure the FastAPI server is running on port 8080 for pipeline control.
+**Ports:** API server defaults to 8081, dashboard to 8502. Override with `--port` and `--dashboard-port`, or set `SERVER_PORT` and `DASHBOARD_PORT` in `.env`.
 
 ## API Endpoints
 
@@ -151,7 +161,9 @@ All settings are in `.env`:
 | `LINKEDIN_EMAIL` | — | Your LinkedIn email |
 | `LINKEDIN_PASSWORD` | — | Your LinkedIn password |
 | `LLM_PROVIDER` | `kimi` | LLM provider: `kimi`, `ollama`, or `openai` |
-| `KIMI_API_KEY` | — | Kimi K2.5 API key |
+| `KIMI_API_KEY` | — | Kimi K2.5 API key (leave empty to use Ollama) |
+| `SERVER_PORT` | `8081` | API server port |
+| `DASHBOARD_PORT` | `8502` | Streamlit dashboard port |
 | `HEADLESS` | `false` | Run browser without window |
 | `SLOW_MO` | `50` | Slow down browser actions (ms) |
 | `MAX_APPLICATIONS_PER_SESSION` | `50` | Max applications before stopping |
@@ -200,7 +212,11 @@ Edit `browser/engine.py` to modify user agent, viewport, or stealth settings.
 
 ## Vector Database and Similarity
 
-Jobs are embedded and stored in ChromaDB for similarity search and clustering. See [docs/VECTOR_DATABASE_GUIDE.md](docs/VECTOR_DATABASE_GUIDE.md) and [docs/SIMILARITY_API.md](docs/SIMILARITY_API.md).
+Jobs are embedded and stored in ChromaDB for similarity search and clustering. Requires `chromadb` and `sentence-transformers` (`pip install chromadb sentence-transformers`).
+
+**Dashboard:** Use the "Job Similarity" and "Clusters" tabs to search similar jobs and view clusters.
+
+**Docs:** [docs/VECTOR_DATABASE_GUIDE.md](docs/VECTOR_DATABASE_GUIDE.md), [docs/SIMILARITY_API.md](docs/SIMILARITY_API.md)
 
 **CLI scripts:**
 - `python scripts/query_similar_jobs.py --job-id 4381380387 --top-k 10`
