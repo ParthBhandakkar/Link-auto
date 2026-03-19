@@ -1,5 +1,12 @@
 # Changelog
 
+## 19-Mar-2026 23:45:33 IST
+
+- Ensure Ctrl+C teardown runs the hard cleanup command as a final step:
+  - deferred `agent-browser`/chrome cleanup from signal handler to shutdown handlers,
+  - kept existing pipeline `KeyboardInterrupt` stop logic first, then ran `run_kill_browser`,
+  - added explicit `python main.py --kill-browser` subprocess invocation so Ctrl+C always executes the same hard kill flow.
+
 ## 19-Mar-2026 23:45:00 IST
 
 - Re-guarded agent-browser startup for Windows bind failures:

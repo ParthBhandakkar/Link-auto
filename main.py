@@ -130,6 +130,22 @@ def parse_args() -> argparse.Namespace:
 _interrupt_cleanup_running = False
 
 
+def _run_kill_browser_command() -> None:
+    """Run the dedicated kill-browser flow as an explicit final cleanup command."""
+    try:
+        project_root = Path(__file__).resolve().parent
+        subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--kill-browser"],
+            cwd=str(project_root),
+            check=False,
+            timeout=12,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        logger.debug("Could not run kill-browser command on interrupt: {}", e)
+
+
 def _run_kill_cleanup() -> None:
     """Run kill-browser cleanup once (for interrupt-driven exits)."""
     global _interrupt_cleanup_running
@@ -138,6 +154,7 @@ def _run_kill_cleanup() -> None:
     _interrupt_cleanup_running = True
     try:
         run_kill_browser()
+        _run_kill_browser_command()
     except Exception as e:
         logger.warning("Interrupt cleanup failed: {}", e)
 
@@ -146,8 +163,7 @@ def _install_interrupt_handlers() -> None:
     """Install handlers so Ctrl+C / terminate events run cleanup."""
 
     def _on_interrupt(signum: int, frame) -> None:
-        logger.warning("Interrupt signal {} received; running browser cleanup.", signum)
-        _run_kill_cleanup()
+        logger.warning("Interrupt signal {} received; initiating shutdown.", signum)
         raise KeyboardInterrupt()
 
     try:
