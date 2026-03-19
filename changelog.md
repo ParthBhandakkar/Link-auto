@@ -1,5 +1,21 @@
 # Changelog
 
+## 21-Mar-2026 03:25:00 IST
+
+- Job search: DOM fallback now scrapes company/location using the same selector family as `_parse_job_card`; `get_job_details` log omits a dangling `at ` when company is still unknown.
+
+## 20-Mar-2026 23:45:00 IST
+
+- Browser `evaluate`: unwrap agent-browser payloads shaped like `{ origin, result: [...] }` (and `value` / `data` list keys, plus digit-key array-like objects) so job DOM fallback and other evals receive a plain list instead of a wrapper dict.
+
+## 20-Mar-2026 22:00:00 IST
+
+- Align job search with working patterns from sibling project **LinkConnect** (`scripts/linkedin_job_scraper.py`): `job_id_from_jobs_view_href()` for slug URLs (`/jobs/view/title-at-co-123`), DOM fallback JS uses the same dual match, list **priming** via window scroll + scrollable-ancestor stepping for lazy lists, selectors `[data-test-id='job-card']` / `[data-job-id]`.
+
+## 20-Mar-2026 21:30:00 IST
+
+- Browser: configurable viewport via `browser_viewport_width` / `browser_viewport_height` in settings (default **1600×1024**, was hardcoded 1400×900) so LinkedIn Jobs has more vertical space and less “blank band” under content when the OS window is taller than the layout viewport.
+
 ## 20-Mar-2026 21:00:00 IST
 
 - Job search parity with `main` (no merge): add `_wait_job_list_main_style()` — `sleep(3)` then `wait_for_selector` 12s per `JOB_LIST_CONTAINER_SELECTORS` like `main`’s `search_jobs`; run after strict `_wait_for_job_list` misses, and once more before giving up on a page when the first extract returns 0 jobs.

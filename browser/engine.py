@@ -37,6 +37,18 @@ def _selector_nth(selector: str, index: int) -> str:
     return f"{selector} >> nth={index}"
 
 
+def unwrap_eval_return(payload: Any) -> Any:
+    """Normalize agent-browser eval payloads: arrays often arrive as {origin, result: [...]}."""
+    if isinstance(payload, dict):
+        for key in ("result", "value", "data"):
+            inner = payload.get(key)
+            if isinstance(inner, list):
+                return inner
+        if payload and all(str(k).isdigit() for k in payload.keys()):
+            return [payload[k] for k in sorted(payload.keys(), key=lambda x: int(str(x)))]
+    return payload
+
+
 class AgentKeyboard:
     def __init__(self, engine: "BrowserEngine") -> None:
         self.engine = engine
@@ -184,7 +196,7 @@ class AgentLocator:
     async def evaluate(self, expression: str) -> Any:
         js = self.page.engine._wrap_locator_eval(self.selector, expression)
         data = await self.page.engine._run_json(["eval", js])
-        return data.get("data")
+        return unwrap_eval_return(data.get("data"))
 
 
 class AgentPage:
@@ -333,7 +345,19 @@ class BrowserEngine:
             raise last_error
 
         try:
-            await self._run_json(["set", "viewport", "1400", "900"])
+            await self._run_json(
+                [
+                    "set",
+                    "viewport",
+                    str(settings.browser_viewport_width),
+                    str(settings.browser_viewport_height),
+                ]
+            )
+            logger.debug(
+                "Viewport set to {}x{}",
+                settings.browser_viewport_width,
+                settings.browser_viewport_height,
+            )
         except Exception as e:
             logger.debug("Viewport setup skipped: {}", str(e)[:120])
         logger.info("Agent-browser engine started (headless={})", settings.headless)
@@ -704,7 +728,7 @@ class BrowserEngine:
     async def evaluate(self, expression: str) -> Any:
         """Evaluate arbitrary JavaScript in the active page context."""
         data = await self._run_json(["eval", expression])
-        return data.get("data")
+        return unwrap_eval_return(data.get("data"))
 
     async def get_current_url(self) -> str:
         data = await self._run_json(["get", "url"])

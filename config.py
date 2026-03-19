@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     headless: bool = False
     slow_mo: int = 50
     browser_timeout: int = 60_000
+    # LinkedIn Jobs two-pane layout needs vertical room; small viewports look “cut off” vs the OS window.
+    browser_viewport_width: int = Field(default=1600, ge=800, le=3840)
+    browser_viewport_height: int = Field(default=1024, ge=600, le=2160)
 
     # ── Job Search ──────────────────────────────────────────────────────
     max_applications_per_session: int = 50

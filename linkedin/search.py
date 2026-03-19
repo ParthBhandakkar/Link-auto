@@ -69,6 +69,21 @@ SEARCH_BLOCKED_TEXT_MARKERS = (
     "detected unusual activity",
 )
 
+
+def job_id_from_jobs_view_href(href: str) -> str:
+    """
+    Numeric id from a LinkedIn job URL (LinkConnect patterns).
+    Slug form: /jobs/view/title-at-company-1234567890 — plain: /jobs/view/1234567890
+    """
+    if not href:
+        return ""
+    m = re.search(r"/jobs/view/[^?/]+-(\d+)(?:/|\?|$)", href)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"/jobs/view/(\d+)", href)
+    return m.group(1).strip() if m else ""
+
+
 # Selectors for the scrollable job-list sidebar (LinkedIn changes these often)
 JOB_LIST_CONTAINER_SELECTORS = [
     ".scaffold-layout__list-container",
@@ -120,6 +135,9 @@ class LinkedInSearch:
                 logger.warning("Job search results did not load for page {}", page_num + 1)
                 await self.browser.take_screenshot(f"search_no_results_p{page_num}")
                 break
+
+            # LinkConnect-style priming: window nudge + scroll the list shell that contains job links (lazy load).
+            await self._prime_job_list_for_lazy_load()
 
             # ── Scroll the job-list sidebar with mouse wheel ────────────
             jobs_before = 0
@@ -295,6 +313,49 @@ class LinkedInSearch:
                 continue
         return False
 
+    async def _prime_job_list_for_lazy_load(self) -> None:
+        """
+        Mirror scripts from LinkConnect `linkedin_job_scraper.search_jobs`: small window scroll,
+        then find the scrollable ancestor of job view links and step-scroll to hydrate virtualized lists.
+        """
+        try:
+            await self.browser.evaluate(
+                "(() => { window.scrollTo(0, Math.floor(window.innerHeight / 2)); })()"
+            )
+            await asyncio.sleep(1.0)
+            await self.browser.evaluate("(() => { window.scrollTo(0, 0); })()")
+            await asyncio.sleep(1.0)
+        except Exception:
+            pass
+        scroll_js = r"""(() => {
+            const links = Array.from(document.querySelectorAll('a[href*="/jobs/view/"]'));
+            if (links.length === 0) return 0;
+            let best = null;
+            let maxSh = 0;
+            links.forEach(link => {
+                let p = link.parentElement;
+                let depth = 0;
+                while (p && depth < 14) {
+                    const sh = p.scrollHeight;
+                    const ch = p.clientHeight;
+                    if (sh > ch + 50 && sh > maxSh) {
+                        maxSh = sh;
+                        best = p;
+                    }
+                    p = p.parentElement;
+                    depth++;
+                }
+            });
+            if (!best) return 0;
+            for (let i = 0; i < 7; i++) best.scrollTop += 650;
+            return best.scrollTop;
+        })()"""
+        try:
+            await self.browser.evaluate(scroll_js)
+            await asyncio.sleep(2.0)
+        except Exception as e:
+            logger.debug("List priming scroll skipped: {}", str(e)[:100])
+
     async def _recover_search_context(self) -> None:
         """
         Reset navigation context after transient network/LinkedIn instability.
@@ -325,6 +386,8 @@ class LinkedInSearch:
             "li.scaffold-layout__list-item",
             "[data-occludable-job-id]",
             "li[data-occludable-job-id]",
+            "[data-test-id='job-card']",
+            "[data-job-id]",
         ]
         no_results_markers = (
             "we couldn't find anything matching",
@@ -406,6 +469,8 @@ class LinkedInSearch:
             "li.job-card-container",
             "[data-occludable-job-id]",
             "li[data-occludable-job-id]",
+            "[data-job-id]",
+            "[data-test-id='job-card']",
             ".scaffold-layout__list-item",
             ".jobs-search-results__list-item .job-card-container__link",
         ]
@@ -438,7 +503,8 @@ class LinkedInSearch:
             const nodes = document.querySelectorAll('a[href*="/jobs/view/"], a[href*="jobs/view"]');
             for (const a of nodes) {
                 const href = a.href || a.getAttribute('href') || '';
-                const m = href.match(/\/jobs\/view\/(\d+)/);
+                let m = href.match(/\/jobs\/view\/[^?/]+-(\d+)(?:\/|\?|$)/);
+                if (!m) m = href.match(/\/jobs\/view\/(\d+)/);
                 if (!m) continue;
                 const id = m[1];
                 if (seen.has(id)) continue;
@@ -454,9 +520,36 @@ class LinkedInSearch:
                 }
                 if (!title) title = (a.innerText || '').trim().split(/\n/)[0].slice(0, 240);
                 title = title.replace(/\s+/g, ' ').trim() || 'Unknown';
+                let company = '';
+                for (const s of [
+                    '.job-card-container__primary-description',
+                    '.artdeco-entity-lockup__subtitle',
+                    "[class*='company-name']",
+                    '.job-card-container__company-name',
+                    "a[data-tracking-control-name*='company']",
+                ]) {
+                    const el = scope.querySelector(s);
+                    if (el && el.innerText) {
+                        company = el.innerText.replace(/\s+/g, ' ').trim();
+                        if (company) break;
+                    }
+                }
+                let location = '';
+                for (const s of [
+                    '.job-card-container__metadata-item',
+                    '.artdeco-entity-lockup__caption',
+                ]) {
+                    const el = scope.querySelector(s);
+                    if (el && el.innerText) {
+                        location = el.innerText.replace(/\s+/g, ' ').trim();
+                        if (location) break;
+                    }
+                }
                 out.push({
                     job_id: id,
                     title,
+                    company,
+                    location,
                     url: 'https://www.linkedin.com/jobs/view/' + id + '/',
                 });
                 if (out.length >= 60) break;
@@ -468,10 +561,13 @@ class LinkedInSearch:
             logger.warning("DOM fallback: page.evaluate returned None")
             return []
         if isinstance(raw, dict):
-            if isinstance(raw.get("value"), list):
-                raw = raw["value"]
-            elif raw and all(str(k).isdigit() for k in raw.keys()):
-                raw = [raw[k] for k in sorted(raw.keys(), key=lambda x: int(str(x)))]
+            for key in ("result", "value", "data"):
+                if isinstance(raw.get(key), list):
+                    raw = raw[key]
+                    break
+            else:
+                if raw and all(str(k).isdigit() for k in raw.keys()):
+                    raw = [raw[k] for k in sorted(raw.keys(), key=lambda x: int(str(x)))]
         if not isinstance(raw, list) or not raw:
             logger.warning(
                 "DOM fallback: evaluate returned no list (got type={} preview={!r})",
@@ -487,6 +583,8 @@ class LinkedInSearch:
                 continue
             job_id = str(row.get("job_id", "")).strip()
             title = clean_text(str(row.get("title", "Unknown")))
+            company = clean_text(str(row.get("company", "")))
+            location = clean_text(str(row.get("location", "")))
             url = str(row.get("url", f"https://www.linkedin.com/jobs/view/{job_id}/"))
             if not job_id or job_id in self._seen_job_ids:
                 continue
@@ -497,8 +595,8 @@ class LinkedInSearch:
                 Job(
                     job_id=job_id,
                     title=title,
-                    company="",
-                    location="",
+                    company=company,
+                    location=location,
                     url=url,
                     is_easy_apply=False,
                     is_remote=False,
@@ -590,9 +688,8 @@ class LinkedInSearch:
                 n_view = await card.locator("a[href*='/jobs/view/']").count()
                 for j in range(n_view):
                     href = await card.locator("a[href*='/jobs/view/']").nth(j).get_attribute("href") or ""
-                    match = re.search(r"/jobs/view/(\d+)", href)
-                    if match:
-                        job_id = match.group(1)
+                    job_id = job_id_from_jobs_view_href(href)
+                    if job_id:
                         break
 
             if not job_id:
@@ -706,7 +803,10 @@ class LinkedInSearch:
         right-side panel, then extract description, salary, experience, etc.
         Falls back to direct navigation if the card click approach fails.
         """
-        logger.info("Getting details for: {} at {}", job.title, job.company)
+        if (job.company or "").strip():
+            logger.info("Getting details for: {} at {}", job.title, job.company)
+        else:
+            logger.info("Getting details for: {}", job.title)
 
         page = self.browser.page
 
