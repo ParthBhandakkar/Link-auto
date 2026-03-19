@@ -30,6 +30,7 @@ from pathlib import Path
 # Ensure the project root is on the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import utils.logger  # noqa: F401
 from loguru import logger
 from config import settings
 
@@ -164,6 +165,7 @@ def _install_interrupt_handlers() -> None:
 
     def _on_interrupt(signum: int, frame) -> None:
         logger.warning("Interrupt signal {} received; initiating shutdown.", signum)
+        _run_kill_cleanup()
         raise KeyboardInterrupt()
 
     try:

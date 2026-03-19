@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 
+import utils.logger  # noqa: F401
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

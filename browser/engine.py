@@ -594,7 +594,17 @@ class BrowserEngine:
         for attempt in range(1, retries + 1):
             try:
                 logger.info("Navigating to {} (attempt {})", url, attempt)
-                await self._run_json(["open", url], timeout=self.default_timeout)
+                # Use in-page navigation after first load to avoid spawning a new tab for every jump.
+                if self._last_url:
+                    try:
+                        await self._run_json(
+                            ["eval", f"window.location.href = {json.dumps(url)};"],
+                            timeout=self.default_timeout,
+                        )
+                    except Exception:
+                        await self._run_json(["open", url], timeout=self.default_timeout)
+                else:
+                    await self._run_json(["open", url], timeout=self.default_timeout)
                 if wait_until:
                     try:
                         await self._run_json(["wait", "--load", wait_until], timeout=self.default_timeout)

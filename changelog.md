@@ -1,5 +1,19 @@
 # Changelog
 
+## 19-Mar-2026 23:52:38 IST
+
+- Improve interrupt hard-cleanup and page navigation stability:
+  - run hard cleanup (`run_kill_browser`) immediately from the Ctrl+C signal handler,
+  - keep cleanup as the final safety path after `KeyboardInterrupt`,
+  - switch navigation to in-page `window.location.href` updates after first load to avoid one-tab-per-navigate “open” calls.
+
+## 19-Mar-2026 23:48:38 IST
+
+- Improve terminal UX with Rich output formatting:
+  - switched logger rendering to a Rich-backed sink for colour + structured message prefixes,
+  - retained detailed file logging for debugging,
+  - ensured Rich logger setup is loaded in both CLI (`main.py`) and server (`server.py`) entrypoints.
+
 ## 19-Mar-2026 23:45:33 IST
 
 - Ensure Ctrl+C teardown runs the hard cleanup command as a final step:
