@@ -876,6 +876,10 @@ class LinkedInSearch:
 
         # ── Strategy 2: if card click didn't work, navigate directly ────
         if not card_clicked:
+            logger.info(
+                "Job details: no in-list card matched id {} — opening job page directly",
+                job.job_id,
+            )
             try:
                 await self.browser.goto(job.url, force_open=True)
                 await asyncio.sleep(3)
@@ -887,14 +891,31 @@ class LinkedInSearch:
         if card_clicked and not panel_changed:
             logger.debug("Panel did not update for job {} — description may be stale", job.job_id)
 
+        # Standalone /jobs/view/{id}/ uses different markup than search split-view.
+        navigated_full_page = not card_clicked
+
         # ── Wait for the detail panel to render ─────────────────────────
         detail_loaded = False
-        detail_wait_selectors = [
-            "#job-details",
-            ".jobs-description__content",
-            ".jobs-box__html-content",
-            ".jobs-description",
-        ]
+        if navigated_full_page:
+            detail_wait_selectors = [
+                "article.jobs-description__container",
+                ".jobs-description-content__text",
+                ".jobs-description-content",
+                ".jobs-unified-description__content",
+                ".description__text",
+                "[data-test-id='job-description']",
+                ".jobs-description__content",
+                ".jobs-box__html-content",
+                ".jobs-description",
+                "#job-details",
+            ]
+        else:
+            detail_wait_selectors = [
+                "#job-details",
+                ".jobs-description__content",
+                ".jobs-box__html-content",
+                ".jobs-description",
+            ]
         for sel in detail_wait_selectors:
             try:
                 await self.browser.wait_for_selector(sel, timeout=5000)
@@ -909,6 +930,7 @@ class LinkedInSearch:
         # ── Try to click "Show more" to expand the description ──────────
         try:
             show_more_selectors = [
+                "button.jobs-description__see-more-button",
                 "button[aria-label*='Show more']",
                 "button[aria-label*='show more']",
                 "button.jobs-description__footer-button",
@@ -924,14 +946,31 @@ class LinkedInSearch:
             pass
 
         # ── Extract description ─────────────────────────────────────────
-        desc_selectors = [
-            "#job-details",
-            ".jobs-description__content",
-            ".jobs-box__html-content",
-            ".jobs-description",
-            ".jobs-description-content",
-            ".job-details-module",
-        ]
+        if navigated_full_page:
+            desc_selectors = [
+                "article.jobs-description__container",
+                ".jobs-description-content__text",
+                ".job-details-jobs-description__text",
+                ".jobs-unified-description__content",
+                ".description__text",
+                "[data-test-id='job-description']",
+                ".jobs-description-content",
+                ".jobs-description__content",
+                ".jobs-box__html-content",
+                ".jobs-description",
+                "#job-details",
+                ".job-details-module",
+            ]
+        else:
+            desc_selectors = [
+                "#job-details",
+                ".jobs-description__content",
+                ".jobs-box__html-content",
+                ".jobs-description",
+                ".jobs-description-content",
+                "article.jobs-description__container",
+                ".job-details-module",
+            ]
         for sel in desc_selectors:
             try:
                 el = page.locator(sel).first

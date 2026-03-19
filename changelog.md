@@ -1,5 +1,9 @@
 # Changelog
 
+## 21-Mar-2026 04:00:00 IST
+
+- `get_job_details`: when opening `/jobs/view/{id}/` directly (no list card match), wait/extract description using LinkConnect-style selectors (`article.jobs-description__container`, `.jobs-description-content__text`, etc.) instead of search-only `#job-details`; add LinkedIn “See more” button selector. INFO log when using direct navigation.
+
 ## 21-Mar-2026 03:25:00 IST
 
 - Job search: DOM fallback now scrapes company/location using the same selector family as `_parse_job_card`; `get_job_details` log omits a dangling `at ` when company is still unknown.
