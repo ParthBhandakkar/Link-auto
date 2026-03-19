@@ -72,6 +72,12 @@ SEND_MESSAGE_SELECTORS = [
     "button[aria-label='Send now']",
 ]
 
+FIRST_DEGREE_SELECTORS = [
+    "span.dist-value:has-text('1st')",
+    "span:has-text('1st')",
+    "li-icon[type='1st-degree']",
+]
+
 
 class LinkedInInvestorMessenger:
     """Send investor outreach messages or connection requests on LinkedIn."""
@@ -209,6 +215,7 @@ class LinkedInInvestorMessenger:
             return False
 
         await human_delay(1.5, 2.5)
+        await self._dismiss_popups()
         await self.browser.take_screenshot("vc_message_composer_open")
 
         input_locator = await self._find_visible_locator(MESSAGE_INPUT_SELECTORS, timeout=15000)
@@ -218,13 +225,26 @@ class LinkedInInvestorMessenger:
 
         typed = await self._type_message(input_locator, message_text)
         if not typed:
+            await self._dismiss_popups()
+            await human_delay(0.8, 1.5)
+            input_locator = await self._find_visible_locator(MESSAGE_INPUT_SELECTORS, timeout=5000)
+            if input_locator is not None:
+                typed = await self._type_message(input_locator, message_text)
+
+        if not typed:
             logger.debug("Failed to type outreach message into the LinkedIn composer")
             return False
 
         await human_delay(1, 1.8)
+        await self._dismiss_popups()
         await self.browser.take_screenshot("vc_message_before_send")
 
         sent = await self._click_send_button()
+        if not sent:
+            await self._dismiss_popups()
+            await human_delay(0.6, 1.2)
+            sent = await self._click_send_button()
+
         if not sent:
             logger.debug("Failed to click an enabled send button in the LinkedIn composer")
             await self.browser.take_screenshot("vc_message_send_failed")
@@ -263,7 +283,19 @@ class LinkedInInvestorMessenger:
             return InvestorOutreachStatus.CONNECT_REQUESTED, "Connection request sent"
         if await self._has_any_selector(MESSAGE_BUTTON_SELECTORS):
             return InvestorOutreachStatus.CONNECTED, "Already connected / first-degree access available"
-        return InvestorOutreachStatus.CONNECT_REQUESTED, "Connection flow completed"
+        return InvestorOutreachStatus.FAILED, "Connection request submission could not be confirmed"
+
+    async def _is_first_degree_connection(self) -> bool:
+        if await self._has_any_selector(FIRST_DEGREE_SELECTORS):
+            return True
+
+        try:
+            main_text = (await self.browser.page.locator("main").first.inner_text()).lower()
+            if " 1st" in f" {main_text}" or "1st\n" in main_text:
+                return True
+        except Exception:
+            pass
+        return False
 
     async def _set_composer_text(self, text: str, selectors: list[str]) -> bool:
         js = f"""
@@ -355,3 +387,90 @@ class LinkedInInvestorMessenger:
             except Exception:
                 continue
         return False
+
+    async def check_and_message_pending_connection(self, investor: "InvestorLead") -> InvestorOutreachResult:
+        """Check if a pending connection was accepted and message them if so."""
+        try:
+            profile_url = investor.linkedin_profile_url
+            logger.info("Checking connection status for {}", investor.investor_name)
+
+            # Navigate to their profile
+            await self.browser.goto(profile_url)
+            await human_delay(2, 3)
+            await self._dismiss_popups()
+            await self.browser.take_screenshot("connection_check_profile_loaded")
+
+            if await self._has_any_selector(PENDING_BUTTON_SELECTORS):
+                logger.info("Connection still pending for {} (Pending button visible)", investor.investor_name)
+                return InvestorOutreachResult(
+                    investor=investor,
+                    status=InvestorOutreachStatus.CONNECT_REQUESTED,
+                    action_taken="connection_check",
+                    connected_status="pending",
+                    notes="Connection request still pending (Pending button visible)",
+                )
+
+            connect_still_available = await self._has_any_selector(CONNECT_BUTTON_SELECTORS)
+            is_first_degree = await self._is_first_degree_connection()
+
+            if not is_first_degree and connect_still_available:
+                logger.info("Connection still pending for {} (Connect available / not first-degree)", investor.investor_name)
+                return InvestorOutreachResult(
+                    investor=investor,
+                    status=InvestorOutreachStatus.SKIPPED,
+                    action_taken="connection_check",
+                    connected_status="",
+                    notes="No active pending request found (Connect still available / not first-degree)",
+                )
+
+            # Do not use Message button alone for acceptance; it can appear for 2nd-degree profiles.
+            if not is_first_degree and not await self._has_any_selector(MESSAGE_BUTTON_SELECTORS):
+                logger.info("Connection still pending for {}", investor.investor_name)
+                return InvestorOutreachResult(
+                    investor=investor,
+                    status=InvestorOutreachStatus.CONNECT_REQUESTED,
+                    action_taken="connection_check",
+                    connected_status="pending",
+                    notes="Connection request not accepted yet",
+                )
+
+            # Connection accepted! Now send the follow-up message
+            logger.info("Connection accepted for {}! Sending follow-up message...", investor.investor_name)
+            
+            # Build the message
+            pitch_data = await self._build_pitch(investor)
+            message_text = pitch_data["message"]
+
+            # Send the message
+            sent = await self._send_message_flow(message_text)
+            if sent:
+                return InvestorOutreachResult(
+                    investor=investor,
+                    status=InvestorOutreachStatus.MESSAGE_SENT,
+                    action_taken="follow_up_message",
+                    connected_status="first_degree",
+                    message_text=message_text,
+                    notes="Connection accepted and follow-up message sent",
+                    sent_at=datetime.now(),
+                )
+
+            # Message flow failed
+            logger.warning("Failed to send follow-up message to {}", investor.investor_name)
+            return InvestorOutreachResult(
+                investor=investor,
+                status=InvestorOutreachStatus.CONNECTED,
+                action_taken="message_failed",
+                connected_status="first_degree",
+                notes="Connection accepted but follow-up message sending failed",
+                sent_at=datetime.now(),
+            )
+
+        except Exception as e:
+            logger.warning("Connection check failed for '{}': {}", investor.investor_name, str(e)[:160])
+            return InvestorOutreachResult(
+                investor=investor,
+                status=InvestorOutreachStatus.FAILED,
+                action_taken="connection_check_error",
+                notes=str(e)[:500],
+                errors=[str(e)],
+            )

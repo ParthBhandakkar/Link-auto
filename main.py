@@ -9,11 +9,13 @@ Usage:
     python main.py --people       # Scrape up to 5 people per company already in the Sheet
     python main.py --outreach     # Find investor/VC leads and write them to the VCs sheet
     python main.py --reachout     # Read VCs from the sheet and message/connect on LinkedIn
+    python main.py --check-connections # Check pending connections and send follow-up messages
         python main.py --job-reachout # Reach out to employees for external-apply jobs
   python main.py --headless     # Run headless (no browser window)
   python main.py --max-apps 5   # Limit applications per session
     python main.py --max-leads 25 # Limit investor leads for outreach runs
     python main.py --max-reachouts 10 # Limit investor reachouts per run
+    python main.py --max-checks 10 # Limit pending connection checks per run
 """
 from __future__ import annotations
 
@@ -65,6 +67,11 @@ def parse_args() -> argparse.Namespace:
         help="Read investors from the VCs worksheet and message/connect with them on LinkedIn",
     )
     mode.add_argument(
+        "--check-connections",
+        action="store_true",
+        help="Check pending connection requests and send follow-up messages if accepted",
+    )
+    mode.add_argument(
         "--job-reachout",
         action="store_true",
         help="Reach out to employees from external-apply job companies on LinkedIn",
@@ -91,6 +98,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Maximum number of investor reachouts to process during a run",
+    )
+    parser.add_argument(
+        "--max-checks",
+        type=int,
+        default=None,
+        help="Maximum number of pending connections to check during a run",
     )
     parser.add_argument(
         "--port",
@@ -225,6 +238,25 @@ async def run_reachout(headless: bool = False, max_reachouts: int | None = None)
         raise
 
 
+async def run_check_connections(headless: bool = False, max_checks: int | None = None) -> None:
+    """Check pending connection requests and send follow-up messages if accepted."""
+    from orchestrator import Orchestrator
+
+    if headless:
+        settings.headless = True
+
+    orch = Orchestrator()
+    try:
+        results = await orch.run_vc_connection_followup_pipeline(limit=max_checks)
+        logger.info("Connection check finished — {} connections checked", len(results))
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+        await orch.stop()
+    except Exception as e:
+        logger.error("Connection check pipeline failed: {}", e)
+        await orch.stop()
+        raise
+
 async def run_job_reachout(headless: bool = False, max_reachouts: int | None = None) -> None:
     """Read external-job contacts from the jobs sheet and attempt referral outreach."""
     from orchestrator import Orchestrator
@@ -295,6 +327,9 @@ def main() -> None:
     elif args.reachout:
         logger.info("Mode: REACHOUT (VCs worksheet → LinkedIn message/connect)")
         asyncio.run(run_reachout(headless=args.headless, max_reachouts=args.max_reachouts))
+    elif args.check_connections:
+        logger.info("Mode: CHECK-CONNECTIONS (pending connections → follow-up messages)")
+        asyncio.run(run_check_connections(headless=args.headless, max_checks=args.max_checks))
     elif args.job_reachout:
         logger.info("Mode: JOB-REACHOUT (external jobs → employee referral outreach)")
         asyncio.run(run_job_reachout(headless=args.headless, max_reachouts=args.max_reachouts))

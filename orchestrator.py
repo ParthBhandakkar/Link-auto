@@ -446,6 +446,65 @@ class Orchestrator:
         finally:
             await self.stop()
 
+    async def run_vc_connection_followup_pipeline(self, limit: int | None = None) -> list[InvestorOutreachResult]:
+        """Check pending connection requests and send follow-up messages if accepted."""
+        results: list[InvestorOutreachResult] = []
+        try:
+            await self.start()
+
+            self.state = BotState.LOGGING_IN
+            logger.info("Step 1/2 — Logging in to LinkedIn…")
+            logged_in = await self.auth.login()
+            if not logged_in:
+                logger.error("Login failed! Aborting VC connection followup pipeline.")
+                self.state = BotState.ERROR
+                return results
+
+            self.state = BotState.APPLYING
+            batch_limit = limit or settings.vc_reachout_batch_size
+            logger.info("Step 2/2 — Reading pending connections from the '{}' worksheet…", settings.google_vc_sheet_name)
+            investors = self.sheets_exporter.read_pending_connections(limit=batch_limit)
+            self.stats.total_found = len(investors)
+            if not investors:
+                logger.warning("No pending connections found in the '{}' worksheet!", settings.google_vc_sheet_name)
+                return results
+
+            logger.info("Checking {} pending connections for acceptance", len(investors))
+            for idx, investor in enumerate(investors, start=1):
+                if self._stop_requested:
+                    break
+                while self._pause_requested:
+                    await asyncio.sleep(1)
+
+                logger.info("Checking connection [{}/{}] — {}", idx, len(investors), investor.investor_name)
+                result = await self.investor_messenger.check_and_message_pending_connection(investor)
+                results.append(result)
+
+                contacted_at = result.sent_at.strftime("%Y-%m-%d %H:%M:%S") if result.sent_at else ""
+                self.sheets_exporter.update_investor_outreach(
+                    investor.linkedin_profile_url,
+                    status=result.status.value,
+                    action=result.action_taken,
+                    connected_status=result.connected_status,
+                    contacted_at=contacted_at,
+                    message_text=result.message_text,
+                    notes=result.notes or ("; ".join(result.errors) if result.errors else ""),
+                )
+                await human_delay(3, 6)
+
+            self.state = BotState.IDLE
+            self.stats.session_end = datetime.now()
+            await self._save_vc_reachout_report(results)
+            logger.info("VC connection followup pipeline finished — {} connections checked", len(results))
+            return results
+
+        except Exception as e:
+            logger.error("VC connection followup pipeline error: {}", str(e))
+            self.state = BotState.ERROR
+            raise
+        finally:
+            await self.stop()
+
     async def run_referral_reachout_pipeline(self, limit: int | None = None) -> list[ReferralReachoutResult]:
         """Reach out to employees at companies with external-apply jobs."""
         results: list[ReferralReachoutResult] = []

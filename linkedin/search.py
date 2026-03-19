@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import re
+from contextlib import suppress
 from datetime import datetime
+from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import build_opener, HTTPRedirectHandler, Request
 from urllib.parse import quote_plus
 
 from loguru import logger
@@ -57,6 +60,207 @@ class LinkedInSearch:
     def __init__(self, browser: BrowserEngine) -> None:
         self.browser = browser
         self._seen_job_ids: set[str] = set()
+
+    @staticmethod
+    def _extract_target_from_linkedin_redirect(url: str) -> str:
+        """Extract the destination URL from common LinkedIn redirect links."""
+        if not url:
+            return ""
+
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+        for key in ("url", "redirect", "redirectUrl", "destination", "dest"):
+            values = query.get(key)
+            if not values:
+                continue
+            candidate = unquote(values[0]).strip()
+            if candidate.startswith("http://") or candidate.startswith("https://"):
+                return candidate
+        return ""
+
+    @staticmethod
+    def _resolve_redirect_url(url: str) -> str:
+        """Follow HTTP redirects for tracking links and return the final URL."""
+        if not url:
+            return ""
+        if url.startswith("http://") or url.startswith("https://"):
+            try:
+                opener = build_opener(HTTPRedirectHandler())
+                req = Request(
+                    url,
+                    headers={
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/123.0 Safari/537.36"
+                        )
+                    },
+                )
+                with opener.open(req, timeout=15) as resp:
+                    final_url = getattr(resp, "geturl", lambda: "")()
+                    return str(final_url or "")
+            except Exception:
+                return ""
+        return ""
+
+    async def _capture_external_apply_link(self, job: Job, debug_reasons: list[str] | None = None) -> str:
+        """Capture final external destination URL for non-Easy-Apply jobs."""
+        page = self.browser.page
+
+        apply_selectors = [
+            "a.jobs-apply-button",
+            "button.jobs-apply-button",
+            "a[aria-label*='Apply']",
+            "button[aria-label*='Apply']",
+        ]
+
+        original_url = ""
+        with suppress(Exception):
+            original_url = await self.browser.get_current_url()
+        if not original_url:
+            original_url = job.url
+
+        for sel in apply_selectors:
+            locator = page.locator(sel).first
+            if await locator.count() == 0:
+                continue
+
+            if debug_reasons is not None:
+                debug_reasons.append(f"selector_found={sel}")
+
+            text = ""
+            with suppress(Exception):
+                text = (await locator.inner_text()).strip().lower()
+            if "easy apply" in text:
+                if debug_reasons is not None:
+                    debug_reasons.append("easy_apply_button_detected")
+                return ""
+
+            href = ""
+            with suppress(Exception):
+                href = (await locator.get_attribute("href") or "").strip()
+
+            dom_candidate = ""
+            with suppress(Exception):
+                dom_candidate = (
+                    await locator.evaluate(
+                        """
+                        el => {
+                            const attrs = Array.from(el.attributes || []).map(a => String(a.value || ''));
+                            const parentA = el.closest('a');
+                            if (parentA && parentA.href) attrs.push(parentA.href);
+                            const html = el.outerHTML || '';
+                            const all = attrs.concat([html]);
+                            const joined = all.join(' ');
+                            const m = joined.match(/https?:\\/\\/[^\\s\"'<>]+/i);
+                            return m ? m[0] : '';
+                        }
+                        """
+                    )
+                    or ""
+                ).strip()
+
+            if not href and dom_candidate:
+                href = dom_candidate
+
+            parsed_from_href = self._extract_target_from_linkedin_redirect(href)
+            if parsed_from_href:
+                if debug_reasons is not None:
+                    debug_reasons.append("resolved_from_linkedin_redirect_query")
+                return parsed_from_href
+
+            resolved_from_href = self._resolve_redirect_url(href)
+            if resolved_from_href:
+                if debug_reasons is not None:
+                    debug_reasons.append("resolved_from_http_redirect")
+                return resolved_from_href
+
+            # Fallback: open same link in current tab and capture resulting URL.
+            if href:
+                try:
+                    await self.browser.goto(href)
+                    await asyncio.sleep(4)
+                    final_url = (await self.browser.get_current_url()).strip()
+                    if final_url and "linkedin.com/jobs" not in final_url:
+                        if debug_reasons is not None:
+                            debug_reasons.append("resolved_from_direct_navigation")
+                        return final_url
+                    parsed_final = self._extract_target_from_linkedin_redirect(final_url)
+                    if parsed_final:
+                        if debug_reasons is not None:
+                            debug_reasons.append("resolved_from_post_navigation_redirect_query")
+                        return parsed_final
+                except Exception:
+                    if debug_reasons is not None:
+                        debug_reasons.append("direct_navigation_failed")
+                    pass
+                finally:
+                    with suppress(Exception):
+                        await self.browser.goto(original_url or job.url)
+                        await asyncio.sleep(2)
+
+            # Last fallback: click the button itself (handles JS-only apply handlers).
+            try:
+                await self.browser.human_click(locator)
+                await asyncio.sleep(4)
+                clicked_url = (await self.browser.get_current_url()).strip()
+                if clicked_url and clicked_url != original_url:
+                    if "linkedin.com/jobs" not in clicked_url:
+                        if debug_reasons is not None:
+                            debug_reasons.append("resolved_from_button_click_navigation")
+                        return clicked_url
+                    parsed_click = self._extract_target_from_linkedin_redirect(clicked_url)
+                    if parsed_click:
+                        if debug_reasons is not None:
+                            debug_reasons.append("resolved_from_button_click_redirect_query")
+                        return parsed_click
+            except Exception:
+                if debug_reasons is not None:
+                    debug_reasons.append("button_click_fallback_failed")
+                pass
+            finally:
+                with suppress(Exception):
+                    if original_url:
+                        await self.browser.goto(original_url)
+                        await asyncio.sleep(2)
+
+        if debug_reasons is not None and not debug_reasons:
+            debug_reasons.append("no_apply_button_selector_found")
+        return ""
+
+    async def resolve_external_apply_link_for_job(self, job_url: str) -> str:
+        """Open a LinkedIn job page and resolve its final external apply URL."""
+        temp_job = Job(url=job_url)
+        try:
+            await self.browser.goto(job_url)
+            await asyncio.sleep(3)
+        except Exception as e:
+            logger.warning("Could not open job URL for apply-link resolve: {}", str(e)[:120])
+            return ""
+
+        final_url = await self._capture_external_apply_link(temp_job)
+        if final_url:
+            logger.debug("Resolved external apply URL: {}", final_url[:160])
+        return final_url
+
+    async def resolve_external_apply_link_for_job_detailed(self, job_url: str) -> tuple[str, str]:
+        """Resolve external apply URL and return diagnostic reason when unresolved."""
+        temp_job = Job(url=job_url)
+        reasons: list[str] = []
+        try:
+            await self.browser.goto(job_url)
+            await asyncio.sleep(3)
+        except Exception as e:
+            reason = f"job_page_navigation_failed:{str(e)[:120]}"
+            return "", reason
+
+        final_url = await self._capture_external_apply_link(temp_job, debug_reasons=reasons)
+        if final_url:
+            logger.debug("Resolved external apply URL: {}", final_url[:160])
+            return final_url, "resolved"
+
+        compact_reason = " | ".join(reasons[-4:]) if reasons else "unresolved_no_diagnostics"
+        return "", compact_reason
 
     async def search_jobs(
         self,
@@ -591,26 +795,15 @@ class LinkedInSearch:
                     break
                 else:
                     job.apply_method = "External"
-                    try:
-                        async with page.expect_popup(timeout=10000) as popup_info:
-                            await btn.click()
-                        popup = await popup_info.value
-                        await popup.wait_for_load_state("domcontentloaded", timeout=15000)
-                        
-                        # LinkedIn sometimes acts as a redirect bridge. Wait until we leave it if so
-                        if "linkedin.com" in popup.url and "externalApply" in popup.url:
-                            try:
-                                await popup.wait_for_url(lambda u: "externalApply" not in u, timeout=10000)
-                            except Exception:
-                                pass # Proceed anyway if timeout
-                                
-                        job.apply_link = popup.url
-                        logger.info(f"Captured external apply link: {job.apply_link}")
-                        await popup.close()
-                    except Exception as e:
-                        logger.warning(f"Failed to capture external link: {e}")
-                        job.apply_link = job.url
-                    break
+
+        if _safe_apply_method := (job.apply_method or "").strip().lower():
+            if _safe_apply_method == "external":
+                try:
+                    resolved_external_link = await self._capture_external_apply_link(job)
+                    if resolved_external_link:
+                        job.apply_link = resolved_external_link
+                except Exception as e:
+                    logger.debug("External apply-link resolve failed for {}: {}", job.job_id, str(e)[:100])
 
         logger.debug(
             "Job details: easy_apply={}, desc_len={}, salary={}, exp={}",

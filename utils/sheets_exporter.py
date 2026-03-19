@@ -498,6 +498,74 @@ class GoogleSheetsExporter:
         logger.info("Read {} pending investors from '{}' worksheet", len(investors), sheet_name)
         return investors
 
+    def read_pending_connections(self, limit: int | None = None, worksheet_title: str | None = None) -> list["InvestorLead"]:
+        """Read investors with connect_requested status to check if connections were accepted."""
+        from models.schemas import InvestorLead
+
+        sheet_name = worksheet_title or settings.google_vc_sheet_name
+        try:
+            worksheet = self._get_or_create_worksheet(sheet_name, VC_SHEET_COLUMNS)
+        except Exception as e:
+            logger.error("Google Sheets connection error: {}", e)
+            return []
+
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            logger.error("Failed to read investor rows from '{}': {}", sheet_name, e)
+            return []
+
+        investors: list[InvestorLead] = []
+        for row in records:
+            profile_url = str(row.get("linkedin_profile_url", "")).strip()
+            if not profile_url:
+                continue
+
+            outreach_status = str(row.get("outreach_status", "")).strip().lower()
+            connected_status = str(row.get("connected_status", "")).strip().lower()
+            outreach_action = str(row.get("outreach_action", "")).strip().lower()
+
+            is_pending_connection = (
+                outreach_status in {"connect_requested", "pending"}
+                or connected_status == "pending"
+                or (
+                    outreach_action in {"connect", "connect_check", "connection_check"}
+                    and outreach_status not in {"message_sent", "connected", "failed", "skipped"}
+                )
+            )
+            if not is_pending_connection:
+                continue
+
+            investor = InvestorLead(
+                scraped_timestamp=str(row.get("scraped_timestamp", "")),
+                startup_name=str(row.get("startup_name", "")),
+                investor_name=str(row.get("investor_name", "")),
+                headline=str(row.get("headline", "")),
+                firm_name=str(row.get("firm_name", "")),
+                investor_type=str(row.get("investor_type", "")),
+                location=str(row.get("location", "")),
+                linkedin_profile_url=profile_url,
+                search_query=str(row.get("search_query", "")),
+                sectors_matched=str(row.get("sectors_matched", "")),
+                stages_matched=str(row.get("stages_matched", "")),
+                geography_match=str(row.get("geography_match", "")),
+                relevance_score=int(row.get("relevance_score", 0) or 0),
+                why_fit=str(row.get("why_fit", "")),
+                source=str(row.get("source", "LinkedIn")),
+                outreach_status=str(row.get("outreach_status", "")),
+                outreach_action=str(row.get("outreach_action", "")),
+                connected_status=str(row.get("connected_status", "")),
+                last_contacted_at=str(row.get("last_contacted_at", "")),
+                message_text=str(row.get("message_text", "")),
+                outreach_notes=str(row.get("outreach_notes", "")),
+            )
+            investors.append(investor)
+            if limit is not None and len(investors) >= limit:
+                break
+
+        logger.info("Read {} pending connections from '{}' worksheet", len(investors), sheet_name)
+        return investors
+
     def update_investor_outreach(
         self,
         linkedin_profile_url: str,
@@ -605,6 +673,109 @@ class GoogleSheetsExporter:
 
         logger.info("Read {} external companies from Google Sheet", len(companies))
         return companies
+
+    def read_external_jobs_for_apply_link_backfill(self) -> list[dict[str, str]]:
+        """Read external-apply jobs that can be used to backfill apply_link values."""
+        try:
+            self._connect()
+            external_sheet = self._get_external_apply_sheet()
+            self._ensure_header_for_sheet(external_sheet, SHEET_COLUMNS)
+        except Exception as e:
+            logger.error("Google Sheets connection error: {}", e)
+            return []
+
+        try:
+            records = external_sheet.get_all_records()
+        except Exception as e:
+            logger.error("Failed to read external worksheet rows: {}", e)
+            return []
+
+        jobs: list[dict[str, str]] = []
+        for row in records:
+            job_link = str(row.get("job_link", "")).strip()
+            if not job_link:
+                continue
+            jobs.append(
+                {
+                    "job_link": job_link,
+                    "apply_link": str(row.get("apply_link", "")).strip(),
+                    "apply_method": str(row.get("apply_method", "")).strip(),
+                    "company": str(row.get("company", "")).strip(),
+                    "job_title": str(row.get("job_title", "")).strip(),
+                }
+            )
+
+        logger.info("Read {} rows from External-apply for apply_link backfill", len(jobs))
+        return jobs
+
+    def update_external_apply_link(self, job_url: str, apply_link: str) -> bool:
+        """Update apply_link in External-apply sheet by matching on job_link."""
+        if not job_url or not apply_link:
+            return False
+
+        try:
+            self._connect()
+            external_sheet = self._get_external_apply_sheet()
+            self._ensure_header_for_sheet(external_sheet, SHEET_COLUMNS)
+        except Exception as e:
+            logger.error("Google Sheets connection error: {}", e)
+            return False
+
+        try:
+            header = external_sheet.row_values(1)
+            link_col = header.index("job_link") + 1
+            apply_col = header.index("apply_link") + 1
+            cell = external_sheet.find(job_url, in_column=link_col)
+            if cell is None:
+                logger.warning("External job URL not found for apply_link update: {}", job_url[:100])
+                return False
+
+            external_sheet.update_cell(cell.row, apply_col, apply_link)
+            return True
+        except Exception as e:
+            logger.error("Failed updating apply_link for {}: {}", job_url[:100], e)
+            return False
+
+    def update_external_application_notes(self, job_url: str, notes: str, append: bool = True) -> bool:
+        """Update application_notes in External-apply sheet by matching on job_link."""
+        if not job_url:
+            return False
+
+        try:
+            self._connect()
+            external_sheet = self._get_external_apply_sheet()
+            self._ensure_header_for_sheet(external_sheet, SHEET_COLUMNS)
+        except Exception as e:
+            logger.error("Google Sheets connection error: {}", e)
+            return False
+
+        try:
+            header = external_sheet.row_values(1)
+            link_col = header.index("job_link") + 1
+            notes_col = header.index("application_notes") + 1
+            cell = external_sheet.find(job_url, in_column=link_col)
+            if cell is None:
+                logger.warning("External job URL not found for notes update: {}", job_url[:100])
+                return False
+
+            new_value = notes
+            if append:
+                current_value = external_sheet.cell(cell.row, notes_col).value or ""
+                current_value = str(current_value).strip()
+                notes = notes.strip()
+                if current_value and notes:
+                    if notes in current_value:
+                        new_value = current_value
+                    else:
+                        new_value = f"{current_value} | {notes}"
+                elif current_value:
+                    new_value = current_value
+
+            external_sheet.update_cell(cell.row, notes_col, new_value)
+            return True
+        except Exception as e:
+            logger.error("Failed updating application_notes for {}: {}", job_url[:100], e)
+            return False
 
     def update_company_people(self, company: str, people: list[dict[str, str]]) -> int:
         """Write up to 5 scraped people to every row matching the given company."""
