@@ -28,6 +28,13 @@
   - added retry with longer job-list wait for second/recurring attempts,
   - added recovery pauses after navigation/list-render failures to improve continuation before keyword-level fallback.
 
+## 20-Mar-2026 00:15:00 IST
+
+- Hardened browser startup retries in `browser/engine.py` for transient bootstrap failures:
+  - added cleanup before each startup retry,
+  - treated DevTools-handshake failures (`Chrome exited before providing DevTools URL`, `no stderr output`) as retryable,
+  - retried startup using temporary profiles when profile/socket bootstrap fails to reduce hard startup crashes.
+
 ## 17-Mar-2026 20:50:00 IST
 
 - Apply-mode resilience added to handle LinkedIn checkpoint/login-wall interruptions:

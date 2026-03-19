@@ -271,6 +271,7 @@ class BrowserEngine:
                 break
             except (TimeoutError, Exception) as exc:
                 last_error = exc
+                await self._cleanup_agent_browser_processes(self.session_name)
                 if self._is_bind_error(exc):
                     logger.debug(
                         "Browser launch bind-related failure for session '{}' (attempt {}): {}",
@@ -278,6 +279,10 @@ class BrowserEngine:
                         session_attempt + 1,
                         str(exc)[:180],
                     )
+                    if session_attempt < session_attempts - 1:
+                        self._page = AgentPage(self)
+                        self._context = AgentContext(self)
+                        continue
                 else:
                     logger.warning(
                         "Browser launch failed for session '{}' (attempt {}): {}",
@@ -285,13 +290,6 @@ class BrowserEngine:
                         session_attempt + 1,
                         str(exc)[:180],
                     )
-
-                if self._is_bind_error(exc) and session_attempt < session_attempts - 1:
-                    # Port 10013 can be environment-specific; try a fresh isolated session name.
-                    await self._cleanup_agent_browser_processes(self.session_name)
-                    self._page = AgentPage(self)
-                    self._context = AgentContext(self)
-                    continue
 
                 # Existing fallback for profile/launch timeouts.
                 if not self._should_retry_with_temp_profile(exc) and not isinstance(exc, TimeoutError):
@@ -310,6 +308,10 @@ class BrowserEngine:
                     await self._run_json(["open", INITIAL_URL], timeout=open_timeout, use_profile=True)
                 except Exception as fallback_exc:
                     if self._is_bind_error(fallback_exc) and session_attempt < session_attempts - 1:
+                        last_error = fallback_exc
+                        await self._cleanup_agent_browser_processes(self.session_name)
+                        continue
+                    if self._should_retry_with_temp_profile(fallback_exc):
                         last_error = fallback_exc
                         await self._cleanup_agent_browser_processes(self.session_name)
                         continue
@@ -343,6 +345,19 @@ class BrowserEngine:
         return any(
             token in msg
             for token in ("failed to bind tcp", "os error 10013", "access permissions", "eacces")
+        )
+
+    def _is_devtools_error(self, exc: Exception) -> bool:
+        """Detect transient browser bootstrap failures with missing DevTools handshakes."""
+        msg = str(exc).lower()
+        return any(
+            token in msg
+            for token in (
+                "chrome exited before providing devtools url",
+                "no stderr output from chrome",
+                "connection attempt failed",
+                "devtools url",
+            )
         )
 
     async def _cleanup_agent_browser_processes(self, session: str) -> None:
@@ -544,7 +559,15 @@ class BrowserEngine:
             "browser has been closed",
             "singletonlock",
             "profile",
+            "chrome exited before providing devtools url",
+            "no stderr output from chrome",
+            "connection attempt failed",
+            "devtools url",
         )
+        if self._is_bind_error(exc):
+            return True
+        if self._is_devtools_error(exc):
+            return True
         return any(marker in message for marker in retry_markers)
 
     def _wrap_locator_eval(self, selector: str, expression: str) -> str:
