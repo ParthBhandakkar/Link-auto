@@ -89,6 +89,8 @@ PROFILE = {
     ],
     "preferred_locations": ["Remote"],
     "job_type": "Remote",
+    # LinkedIn jobs URL location=… (geo filter). Empty / unset → use "country" below.
+    "job_search_location": "India",
 
     # ── Summary for LLM context ────────────────────────────────────────
     "professional_summary": (

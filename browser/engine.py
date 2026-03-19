@@ -203,8 +203,14 @@ class AgentPage:
     async def add_init_script(self, script: str) -> None:
         logger.debug("agent-browser add_init_script skipped")
 
-    async def goto(self, url: str, wait_until: str = "domcontentloaded") -> None:
-        await self.engine.goto(url, wait_until=wait_until)
+    async def goto(
+        self,
+        url: str,
+        wait_until: str = "domcontentloaded",
+        *,
+        force_open: bool = False,
+    ) -> None:
+        await self.engine.goto(url, wait_until=wait_until, force_open=force_open)
 
     def locator(self, selector: str) -> AgentLocator:
         return AgentLocator(self, selector)
@@ -572,13 +578,16 @@ class BrowserEngine:
         url: str,
         wait_until: str = "domcontentloaded",
         retries: int = 2,
+        *,
+        force_open: bool = False,
     ) -> None:
         last_err: Exception | None = None
         for attempt in range(1, retries + 1):
             try:
                 logger.info("Navigating to {} (attempt {})", url, attempt)
                 # Use in-page navigation after first load to avoid spawning a new tab for every jump.
-                if self._last_url:
+                # LinkedIn Jobs SPA often fails to mount results when using location.href only; main branch always used open.
+                if self._last_url and not force_open:
                     try:
                         await self._run_json(
                             ["eval", f"window.location.href = {json.dumps(url)};"],
@@ -603,6 +612,14 @@ class BrowserEngine:
 
     async def wait_for_url(self, url_pattern: str, timeout: int = 30000) -> None:
         await self._run_json(["wait", "--url", url_pattern], timeout=timeout + 5000)
+
+    async def wait_for_load_state(self, state: str = "load", timeout: int = 45000) -> bool:
+        """Best-effort wait after navigation (LinkedIn jobs hydrate after domcontentloaded)."""
+        try:
+            await self._run_json(["wait", "--load", state], timeout=timeout)
+            return True
+        except Exception:
+            return False
 
     async def wait_for_selector(self, selector: str, timeout: int = 15000, state: str = "visible") -> AgentLocator:
         locator = self.page.locator(selector).first

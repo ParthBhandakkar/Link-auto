@@ -1,5 +1,23 @@
 # Changelog
 
+## 20-Mar-2026 19:15:00 IST
+
+- Job search extraction: add `_extract_job_cards_dom_fallback` via `browser.evaluate` (scan `a[href*='/jobs/view/']` in the live DOM) when locator counts are wrong or every `_parse_job_card` returns None; broaden job id/title parsing (all view links in card, `data-entity-urn` jobPosting, `base-search-card__title`).
+- `get_job_details`: guard Playwright-only `expect_popup` / `popup.wait_for_*` behind `getattr` (agent-browser `AgentPage` never implemented these — same limitation as `main`).
+
+## 20-Mar-2026 18:30:00 IST
+
+- Job search: remove unscoped `base-card` / `jobPosting` urn signals (false \"ready\" → 0 parsed jobs); scope row detection to list `a[href*='/jobs/view/']` + known list-item selectors; after strict polling, reuse main-style visible `JOB_LIST_CONTAINER_SELECTORS` wait for the remaining timeout slice.
+- `search_all_keywords` uses `PROFILE['job_search_location']` or `country` for URL/geo (was hardcoded `Remote`); added `job_search_location` in `profile.py` (India); `Job.search_location` metadata follows the same geo string; INFO probes when card count is 0.
+
+## 20-Mar-2026 17:00:00 IST
+
+- Fix job search vs `main`: use `goto(..., force_open=True)` for jobs URLs (and direct job detail navigation) so LinkedIn Jobs SPA loads like the old always-`open` path; tighten `_wait_for_job_list` to require real job-row selectors or jobs-specific empty copy (no early exit on generic scaffolds / footer phrases); add `base-card` / `jobPosting` urn selectors for newer result cards.
+
+## 20-Mar-2026 16:00:00 IST
+
+- Harden LinkedIn job search page detection (`linkedin/search.py`): expand list/scaffold selectors, poll for job rows / empty-state copy / containers instead of a single long `visible` wait on stale selectors; longer budgets; optional `wait --load load` after `goto` via `BrowserEngine.wait_for_load_state`; slightly longer post-navigation settle delay.
+
 ## 20-Mar-2026 14:30:00 IST
 
 - Reduce stacked Chrome windows on Windows startup retries: after a failed `open`, temp-profile fallback now calls `stop(try_close=False)` (skip useless `close` RPC), runs `_cleanup_agent_browser_processes` again, waits briefly, then opens; cleanup also runs `taskkill /F /IM chrome.exe /T` and a longer post-kill sleep so child processes die before the next launch.

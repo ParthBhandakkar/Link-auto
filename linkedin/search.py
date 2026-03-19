@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 from datetime import datetime
 from urllib.parse import quote_plus
 
@@ -68,12 +69,15 @@ SEARCH_BLOCKED_TEXT_MARKERS = (
     "detected unusual activity",
 )
 
-# Selectors for the scrollable job-list sidebar (LinkedIn changes these)
+# Selectors for the scrollable job-list sidebar (LinkedIn changes these often)
 JOB_LIST_CONTAINER_SELECTORS = [
+    ".scaffold-layout__list-container",
     ".jobs-search-results-list",
     ".scaffold-layout__list",
+    "main.scaffold-layout__list",
     "[class*='jobs-search-results']",
     ".jobs-search-two-pane__wrapper",
+    ".jobs-search__results-list",
 ]
 
 
@@ -147,7 +151,7 @@ class LinkedInSearch:
 
             # ── Extract job cards ───────────────────────────────────────
             try:
-                jobs = await self._extract_job_cards(keyword)
+                jobs = await self._extract_job_cards(keyword, search_location=location)
             except Exception as e:
                 logger.error("Failed extracting jobs for page {}: {}",
                              page_num + 1, str(e)[:120])
@@ -214,9 +218,14 @@ class LinkedInSearch:
                     page_num + 1,
                 )
                 try:
-                    # Use a slightly longer timeout on recovery retry passes.
-                    await self.browser.goto(url, wait_until="domcontentloaded")
-                    await asyncio.sleep(3 if attempt == 1 else 5)
+                    # Jobs SPA often paints after domcontentloaded; optional "load" + settle time.
+                    await self.browser.goto(
+                        url,
+                        wait_until="domcontentloaded",
+                        force_open=True,
+                    )
+                    await self.browser.wait_for_load_state("load", timeout=45000)
+                    await asyncio.sleep(4.5 if attempt == 1 else 6.0)
                 except Exception as nav_err:
                     logger.warning("Search navigation failed (template {}, attempt {}): {}",
                                    idx + 1,
@@ -237,8 +246,8 @@ class LinkedInSearch:
                         continue
                     break
 
-                wait_timeout_ms = 22000 if idx == 0 and attempt > 1 else (16000 - (idx * 3000))
-                if await self._wait_for_job_list(timeout_ms=wait_timeout_ms):
+                wait_timeout_ms = 28000 if idx == 0 and attempt > 1 else (24000 - (idx * 4000))
+                if await self._wait_for_job_list(timeout_ms=max(wait_timeout_ms, 20000)):
                     return True
 
                 logger.warning("Job list did not render for page {} (template {}, attempt {})",
@@ -272,11 +281,61 @@ class LinkedInSearch:
             logger.debug("Search recovery pre-step to feed failed: {}", str(e)[:120])
         await asyncio.sleep(0.5)
 
-    async def _wait_for_job_list(self, timeout_ms: int = 16000) -> bool:
-        """Wait for any known job-list container selector to appear."""
+    async def _wait_for_job_list(self, timeout_ms: int = 22000) -> bool:
+        """
+        Wait for job rows first (selectors that match real list items / view links only).
+
+        Avoid unscoped `div.base-card` / `jobPosting` urn — they match elsewhere on the page,
+        so we used to return \"ready\" then parse 0 jobs. After the strict phase, fall back to
+        main-branch-style visible list containers for the remaining time budget.
+        """
+        job_row_selectors = [
+            ".jobs-search-results-list a[href*='/jobs/view/']",
+            ".scaffold-layout__list a[href*='/jobs/view/']",
+            ".jobs-search-results__list-item",
+            "li.ember-view.jobs-search-results__list-item",
+            ".job-card-container",
+            "li.job-card-container",
+            "li.scaffold-layout__list-item",
+            "[data-occludable-job-id]",
+            "li[data-occludable-job-id]",
+        ]
+        no_results_markers = (
+            "we couldn't find anything matching",
+            "we couldn’t find anything matching",
+            "couldn't find any jobs",
+            "couldn’t find any jobs",
+            "no jobs that match",
+            "no results found for",
+        )
+        t0 = time.monotonic()
+        deadline_sec = timeout_ms / 1000.0
+        strict_until = t0 + deadline_sec * 0.65
+
+        while time.monotonic() < strict_until:
+            try:
+                body = (await self.browser.get_page_text()).lower()
+                if any(m in body for m in no_results_markers):
+                    return True
+            except Exception:
+                pass
+
+            for sel in job_row_selectors:
+                try:
+                    if await self.browser.count_elements(sel) > 0:
+                        return True
+                except Exception:
+                    continue
+
+            await asyncio.sleep(0.45)
+
+        remaining_ms = int(max(0.0, (t0 + deadline_sec - time.monotonic())) * 1000)
+        if remaining_ms < 1500:
+            return False
+        per_sel = max(2000, min(12000, remaining_ms // max(1, len(JOB_LIST_CONTAINER_SELECTORS))))
         for sel in JOB_LIST_CONTAINER_SELECTORS:
             try:
-                await self.browser.wait_for_selector(sel, timeout=timeout_ms)
+                await self.browser.wait_for_selector(sel, timeout=per_sel)
                 return True
             except Exception:
                 continue
@@ -338,7 +397,82 @@ class LinkedInSearch:
                 return sel
         return ""
 
-    async def _extract_job_cards(self, search_keyword: str) -> list[Job]:
+    async def _extract_job_cards_dom_fallback(
+        self, search_keyword: str, *, search_location: str = "Remote"
+    ) -> list[Job]:
+        """
+        Collect jobs by scanning live DOM for /jobs/view/ links (same idea as DevTools console).
+        Used when locator-based card parsing yields 0 jobs — agent-browser counts can diverge from
+        attributes Playwright-style locators expect on LinkedIn's current markup.
+        """
+        expr = r"""
+        () => {
+            const seen = new Set();
+            const out = [];
+            for (const a of document.querySelectorAll('a[href*="/jobs/view/"]')) {
+                const href = a.href || '';
+                const m = href.match(/\/jobs\/view\/(\d+)/);
+                if (!m) continue;
+                const id = m[1];
+                if (seen.has(id)) continue;
+                seen.add(id);
+                let title = '';
+                const card = a.closest('li, [data-occludable-job-id], .job-card-container, article, .base-card');
+                const scope = card || a;
+                const strong = scope.querySelector('strong');
+                if (strong && strong.innerText) title = strong.innerText.trim();
+                if (!title) {
+                    const t = scope.querySelector('.base-search-card__title, .job-card-list__title, h3');
+                    if (t && t.innerText) title = t.innerText.trim();
+                }
+                if (!title) title = (a.innerText || '').trim().split(/\n/)[0].slice(0, 240);
+                title = title.replace(/\s+/g, ' ').trim() || 'Unknown';
+                out.push({
+                    job_id: id,
+                    title,
+                    url: 'https://www.linkedin.com/jobs/view/' + id + '/',
+                });
+                if (out.length >= 60) break;
+            }
+            return out;
+        }
+        """
+        raw = await self.browser.evaluate(expr)
+        if not isinstance(raw, list) or not raw:
+            return []
+
+        jobs: list[Job] = []
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            job_id = str(row.get("job_id", "")).strip()
+            title = clean_text(str(row.get("title", "Unknown")))
+            url = str(row.get("url", f"https://www.linkedin.com/jobs/view/{job_id}/"))
+            if not job_id or job_id in self._seen_job_ids:
+                continue
+            if self._is_internship(title):
+                continue
+            self._seen_job_ids.add(job_id)
+            jobs.append(
+                Job(
+                    job_id=job_id,
+                    title=title,
+                    company="",
+                    location="",
+                    url=url,
+                    is_easy_apply=False,
+                    is_remote=False,
+                    search_keyword=search_keyword,
+                    scraped_timestamp=now,
+                    apply_method="External",
+                    search_location=search_location,
+                    keywords_matched=search_keyword,
+                )
+            )
+        return jobs
+
+    async def _extract_job_cards(self, search_keyword: str, *, search_location: str = "Remote") -> list[Job]:
         """Extract job information from the current search results page."""
         jobs: list[Job] = []
         page = self.browser.page
@@ -349,14 +483,27 @@ class LinkedInSearch:
 
         if card_count == 0:
             logger.warning("No job card elements found with '{}'", cards_selector)
-            return []
+            probe = [
+                ".jobs-search-results__list-item",
+                "[data-occludable-job-id]",
+                ".jobs-search-results-list a[href*='/jobs/view/']",
+            ]
+            for ps in probe:
+                try:
+                    n = await page.locator(ps).count()
+                    logger.info("Job list probe '{}': count={}", ps, n)
+                except Exception:
+                    pass
+            return await self._extract_job_cards_dom_fallback(
+                search_keyword, search_location=search_location
+            )
 
         logger.debug("Extracting from {} cards (selector: '{}')", card_count, cards_selector)
 
         for i in range(card_count):
             try:
                 card = cards.nth(i)
-                job = await self._parse_job_card(card, search_keyword)
+                job = await self._parse_job_card(card, search_keyword, search_location=search_location)
                 if job and job.job_id not in self._seen_job_ids:
                     # Skip internships / non-full-time titles
                     if self._is_internship(job.title):
@@ -368,6 +515,18 @@ class LinkedInSearch:
                 logger.debug("Error parsing card {}: {}", i, str(e)[:100])
                 continue
 
+        if not jobs:
+            logger.warning(
+                "Parsed 0 jobs from {} element(s) with selector '{}' — using DOM link fallback",
+                card_count,
+                cards_selector,
+            )
+            jobs = await self._extract_job_cards_dom_fallback(
+                search_keyword, search_location=search_location
+            )
+            if jobs:
+                logger.info("DOM fallback recovered {} job(s)", len(jobs))
+
         return jobs
 
     @staticmethod
@@ -376,7 +535,7 @@ class LinkedInSearch:
         lower = title.lower()
         return any(kw in lower for kw in INTERNSHIP_KEYWORDS)
 
-    async def _parse_job_card(self, card, search_keyword: str) -> Job | None:
+    async def _parse_job_card(self, card, search_keyword: str, *, search_location: str = "Remote") -> Job | None:
         """Parse a single job card element into a Job object."""
         try:
             # Extract job ID
@@ -389,10 +548,19 @@ class LinkedInSearch:
                 if await inner.count() > 0:
                     job_id = (await inner.get_attribute("data-job-id") or "").strip()
             if not job_id:
-                link_el = card.locator("a[href*='/jobs/view/']").first
-                if await link_el.count() > 0:
-                    href = await link_el.get_attribute("href") or ""
+                n_view = await card.locator("a[href*='/jobs/view/']").count()
+                for j in range(n_view):
+                    href = await card.locator("a[href*='/jobs/view/']").nth(j).get_attribute("href") or ""
                     match = re.search(r"/jobs/view/(\d+)", href)
+                    if match:
+                        job_id = match.group(1)
+                        break
+
+            if not job_id:
+                urn_el = card.locator("[data-entity-urn*='jobPosting']").first
+                if await urn_el.count() > 0:
+                    urn = await urn_el.get_attribute("data-entity-urn") or ""
+                    match = re.search(r"jobPosting[:(](\d+)", urn)
                     if match:
                         job_id = match.group(1)
 
@@ -408,6 +576,9 @@ class LinkedInSearch:
                 ".artdeco-entity-lockup__title",
                 "a.job-card-list__title--link strong",
                 "a[class*='job-card-list__title'] strong",
+                ".base-search-card__title",
+                "h3.base-search-card__title",
+                "a[data-control-name*='job_card_title']",
             ]
             for sel in title_selectors:
                 el = card.locator(sel).first
@@ -482,7 +653,7 @@ class LinkedInSearch:
                 search_keyword=search_keyword,
                 scraped_timestamp=now,
                 apply_method="Easy Apply" if is_easy_apply else "External",
-                search_location="Remote",
+                search_location=search_location,
                 keywords_matched=search_keyword,
             )
 
@@ -567,7 +738,7 @@ class LinkedInSearch:
         # ── Strategy 2: if card click didn't work, navigate directly ────
         if not card_clicked:
             try:
-                await self.browser.goto(job.url)
+                await self.browser.goto(job.url, force_open=True)
                 await asyncio.sleep(3)
             except Exception as nav_err:
                 logger.warning("Navigation to job page failed: {} — returning partial data",
@@ -735,25 +906,35 @@ class LinkedInSearch:
                     break
                 else:
                     job.apply_method = "External"
-                    try:
-                        async with page.expect_popup(timeout=10000) as popup_info:
-                            await btn.click()
-                        popup = await popup_info.value
-                        await popup.wait_for_load_state("domcontentloaded", timeout=15000)
-                        
-                        # LinkedIn sometimes acts as a redirect bridge. Wait until we leave it if so
-                        if "linkedin.com" in popup.url and "externalApply" in popup.url:
-                            try:
-                                await popup.wait_for_url(lambda u: "externalApply" not in u, timeout=10000)
-                            except Exception:
-                                pass # Proceed anyway if timeout
-                                
-                        job.apply_link = popup.url
-                        logger.info(f"Captured external apply link: {job.apply_link}")
-                        await popup.close()
-                    except Exception as e:
-                        logger.warning(f"Failed to capture external link: {e}")
+                    # Playwright-only API; AgentPage (agent-browser) has no expect_popup — same gap as main.
+                    exp_popup = getattr(page, "expect_popup", None)
+                    if exp_popup is None:
+                        logger.debug("expect_popup unavailable; external apply URL not captured")
                         job.apply_link = job.url
+                    else:
+                        try:
+                            async with exp_popup(timeout=10000) as popup_info:
+                                await btn.click()
+                            popup = await popup_info.value
+                            wls = getattr(popup, "wait_for_load_state", None)
+                            if callable(wls):
+                                await wls("domcontentloaded", timeout=15000)
+                            purl = getattr(popup, "url", "") or ""
+                            if "linkedin.com" in purl and "externalApply" in purl:
+                                wf = getattr(popup, "wait_for_url", None)
+                                if callable(wf):
+                                    try:
+                                        await wf(lambda u: "externalApply" not in u, timeout=10000)
+                                    except Exception:
+                                        pass
+                            job.apply_link = getattr(popup, "url", None) or job.url
+                            logger.info("Captured external apply link: {}", job.apply_link)
+                            closer = getattr(popup, "close", None)
+                            if callable(closer):
+                                await closer()
+                        except Exception as e:
+                            logger.warning("Failed to capture external link: {}", e)
+                            job.apply_link = job.url
                     break
 
         logger.debug(
@@ -771,12 +952,19 @@ class LinkedInSearch:
         keywords = PROFILE["job_search_keywords"]
         min_jobs = settings.min_jobs_per_keyword
 
+        geo = str(
+            PROFILE.get("job_search_location")
+            or PROFILE.get("country")
+            or "Remote"
+        ).strip() or "Remote"
+        logger.info("Job search location filter (LinkedIn URL): '{}'", geo)
+
         for keyword in keywords:
             logger.info("═══ Searching keyword: '{}' (min {} jobs) ═══", keyword, min_jobs)
             try:
                 jobs = await self.search_jobs(
                     keyword=keyword,
-                    location="Remote",
+                    location=geo,
                     max_pages=max_pages_per_keyword,
                     min_jobs=min_jobs,
                 )
