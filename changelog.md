@@ -1,5 +1,13 @@
 # Changelog
 
+## 20-Mar-2026 21:00:00 IST
+
+- Job search parity with `main` (no merge): add `_wait_job_list_main_style()` — `sleep(3)` then `wait_for_selector` 12s per `JOB_LIST_CONTAINER_SELECTORS` like `main`’s `search_jobs`; run after strict `_wait_for_job_list` misses, and once more before giving up on a page when the first extract returns 0 jobs.
+
+## 20-Mar-2026 20:10:00 IST
+
+- Fix DOM job-scrape fallback: wrap eval script in `(() => { ... })()` so the result is the job array (bare arrow function was never invoked → undefined). Normalize `{value: [...]}` / array-like object shapes from agent-browser.
+
 ## 20-Mar-2026 19:15:00 IST
 
 - Job search extraction: add `_extract_job_cards_dom_fallback` via `browser.evaluate` (scan `a[href*='/jobs/view/']` in the live DOM) when locator counts are wrong or every `_parse_job_card` returns None; broaden job id/title parsing (all view links in card, `data-entity-urn` jobPosting, `base-search-card__title`).

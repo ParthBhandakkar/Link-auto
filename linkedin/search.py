@@ -158,6 +158,14 @@ class LinkedInSearch:
                 await self.browser.take_screenshot(f"search_extract_error_p{page_num}")
                 break
             if not jobs:
+                # Main-style extra settle + container waits, then extract again (timing / hydration).
+                logger.info("No jobs after first extract — main-style wait + re-extract")
+                await self._wait_job_list_main_style()
+                try:
+                    jobs = await self._extract_job_cards(keyword, search_location=location)
+                except Exception as e2:
+                    logger.debug("Re-extract failed: {}", str(e2)[:100])
+            if not jobs:
                 logger.info("No job cards found on page {}", page_num + 1)
                 break
 
@@ -249,6 +257,10 @@ class LinkedInSearch:
                 wait_timeout_ms = 28000 if idx == 0 and attempt > 1 else (24000 - (idx * 4000))
                 if await self._wait_for_job_list(timeout_ms=max(wait_timeout_ms, 20000)):
                     return True
+                # Main branch: after goto + sleep, wait up to 12s per list-container (visible).
+                # Keeps parity with proven main behavior when strict row polling times out first.
+                if await self._wait_job_list_main_style():
+                    return True
 
                 logger.warning("Job list did not render for page {} (template {}, attempt {})",
                                page_num + 1, idx + 1, attempt)
@@ -267,6 +279,20 @@ class LinkedInSearch:
             if idx == 0:
                 logger.warning("Switching to fallback search URL for page {}", page_num + 1)
 
+        return False
+
+    async def _wait_job_list_main_style(self) -> bool:
+        """
+        Same readiness sequence as origin/main `search_jobs`: brief settle, then
+        `wait_for_selector` (visible) for each list shell selector with 12s budget each.
+        """
+        await asyncio.sleep(3.0)
+        for sel in JOB_LIST_CONTAINER_SELECTORS:
+            try:
+                await self.browser.wait_for_selector(sel, timeout=12000)
+                return True
+            except Exception:
+                continue
         return False
 
     async def _recover_search_context(self) -> None:
@@ -405,12 +431,13 @@ class LinkedInSearch:
         Used when locator-based card parsing yields 0 jobs — agent-browser counts can diverge from
         attributes Playwright-style locators expect on LinkedIn's current markup.
         """
-        expr = r"""
-        () => {
+        # Must be an IIFE: bare `() => { ... }` is only a function value; eval does not call it → undefined.
+        expr = r"""(() => {
             const seen = new Set();
             const out = [];
-            for (const a of document.querySelectorAll('a[href*="/jobs/view/"]')) {
-                const href = a.href || '';
+            const nodes = document.querySelectorAll('a[href*="/jobs/view/"], a[href*="jobs/view"]');
+            for (const a of nodes) {
+                const href = a.href || a.getAttribute('href') || '';
                 const m = href.match(/\/jobs\/view\/(\d+)/);
                 if (!m) continue;
                 const id = m[1];
@@ -435,10 +462,22 @@ class LinkedInSearch:
                 if (out.length >= 60) break;
             }
             return out;
-        }
-        """
+        })()"""
         raw = await self.browser.evaluate(expr)
+        if raw is None:
+            logger.warning("DOM fallback: page.evaluate returned None")
+            return []
+        if isinstance(raw, dict):
+            if isinstance(raw.get("value"), list):
+                raw = raw["value"]
+            elif raw and all(str(k).isdigit() for k in raw.keys()):
+                raw = [raw[k] for k in sorted(raw.keys(), key=lambda x: int(str(x)))]
         if not isinstance(raw, list) or not raw:
+            logger.warning(
+                "DOM fallback: evaluate returned no list (got type={} preview={!r})",
+                type(raw).__name__,
+                str(raw)[:200],
+            )
             return []
 
         jobs: list[Job] = []
