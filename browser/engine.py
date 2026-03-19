@@ -8,6 +8,7 @@ import os
 import random
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,13 +18,19 @@ from config import settings, BROWSER_DATA_DIR, SCREENSHOT_DIR
 
 AGENT_BROWSER_PROFILE_DIR = BROWSER_DATA_DIR / "agent_browser_profile"
 AGENT_BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+AGENT_BROWSER_PERSISTENT_SESSION = "link-auto-apply"
 # agent-browser installed in project via npm (node_modules/agent-browser)
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AGENT_BROWSER_ROOT = _PROJECT_ROOT / "node_modules" / "agent-browser"
 AGENT_BROWSER_CLIENT = AGENT_BROWSER_ROOT / "bin" / "agent-browser.js"
 
-# Initial URL when pipeline starts — LinkedIn feed (auth will handle login if needed)
-INITIAL_URL = "https://www.linkedin.com/feed/"
+# Initial URL when pipeline starts — about:blank is fast; auth.login() navigates to LinkedIn
+INITIAL_URL = "about:blank"
+
+
+def get_session_name() -> str:
+    """Session name for agent-browser (matches BrowserEngine logic)."""
+    return "safe" if os.name == "nt" else f"auto-apply-{os.getpid()}"
 
 
 def _selector_nth(selector: str, index: int) -> str:
@@ -236,7 +243,11 @@ class BrowserEngine:
         self._screenshot_counter = 0
         self._last_url = ""
         self.default_timeout = settings.browser_timeout
-        self.session_name = f"auto-apply-{os.getpid()}"
+        # On Windows, default session (auto-apply-{pid}) can hash to port 50838, which falls in
+        # the excluded range 50766-50865 (netsh interface ipv4 show excludedportrange), causing
+        # TCP bind error 10013 (EACCES). Use session "safe" which maps to port 49252 (verified
+        # in agent-browser issue #132).
+        self.session_name = get_session_name()
         self.profile_dir = AGENT_BROWSER_PROFILE_DIR
         self._owns_temp_profile = False
 
@@ -245,22 +256,69 @@ class BrowserEngine:
         logger.info("Starting agent-browser engine…")
         self._page = AgentPage(self)
         self._context = AgentContext(self)
-        try:
-            await self._run_json(["open", INITIAL_URL])
-        except Exception as exc:
-            if not self._should_retry_with_temp_profile(exc):
-                raise
+        # Chrome cold start can take 60–90s; profile lock or slow drive can cause hangs
+        open_timeout = 120_000
+        session_attempts = 4
+        last_error: Exception | None = None
+        started = False
 
-            logger.warning(
-                "Persistent browser profile failed to launch; retrying with a temporary profile: {}",
-                str(exc)[:200],
-            )
-            await self.stop()
-            self.profile_dir = Path(tempfile.mkdtemp(prefix="agent_browser_profile_", dir=str(BROWSER_DATA_DIR)))
-            self._owns_temp_profile = True
-            self._page = AgentPage(self)
-            self._context = AgentContext(self)
-            await self._run_json(["open", INITIAL_URL])
+        for session_attempt in range(session_attempts):
+            self.session_name = self._session_name_for_attempt(session_attempt)
+            try:
+                # Start with persistent profile so LinkedIn login/cookies are reused
+                await self._run_json(["open", INITIAL_URL], timeout=open_timeout, use_profile=True)
+                started = True
+                break
+            except (TimeoutError, Exception) as exc:
+                last_error = exc
+                if self._is_bind_error(exc):
+                    logger.debug(
+                        "Browser launch bind-related failure for session '{}' (attempt {}): {}",
+                        self.session_name,
+                        session_attempt + 1,
+                        str(exc)[:180],
+                    )
+                else:
+                    logger.warning(
+                        "Browser launch failed for session '{}' (attempt {}): {}",
+                        self.session_name,
+                        session_attempt + 1,
+                        str(exc)[:180],
+                    )
+
+                if self._is_bind_error(exc) and session_attempt < session_attempts - 1:
+                    # Port 10013 can be environment-specific; try a fresh isolated session name.
+                    await self._cleanup_agent_browser_processes(self.session_name)
+                    self._page = AgentPage(self)
+                    self._context = AgentContext(self)
+                    continue
+
+                # Existing fallback for profile/launch timeouts.
+                if not self._should_retry_with_temp_profile(exc) and not isinstance(exc, TimeoutError):
+                    break
+
+                logger.warning(
+                    "Browser launch failed (timeout or profile); retrying with temporary profile: {}",
+                    str(exc)[:200],
+                )
+                await self.stop()
+                self.profile_dir = Path(tempfile.mkdtemp(prefix="agent_browser_profile_", dir=str(BROWSER_DATA_DIR)))
+                self._owns_temp_profile = True
+                self._page = AgentPage(self)
+                self._context = AgentContext(self)
+                try:
+                    await self._run_json(["open", INITIAL_URL], timeout=open_timeout, use_profile=True)
+                except Exception as fallback_exc:
+                    if self._is_bind_error(fallback_exc) and session_attempt < session_attempts - 1:
+                        last_error = fallback_exc
+                        await self._cleanup_agent_browser_processes(self.session_name)
+                        continue
+                    raise
+                started = True
+                break
+
+        if not started and last_error is not None:
+            raise last_error
 
         try:
             await self._run_json(["set", "viewport", "1400", "900"])
@@ -268,6 +326,65 @@ class BrowserEngine:
             logger.debug("Viewport setup skipped: {}", str(e)[:120])
         logger.info("Agent-browser engine started (headless={})", settings.headless)
         return self._page
+
+
+    def _session_name_for_attempt(self, attempt: int) -> str:
+        """Generate a stable safe session name on non-Windows, or rotated isolated windows sessions."""
+        if os.name != "nt":
+            return f"auto-apply-{os.getpid()}"
+        base = get_session_name()
+        if attempt <= 0:
+            return base
+        return f"{base}-{attempt}-{uuid.uuid4().hex[:6]}"
+
+    def _is_bind_error(self, exc: Exception) -> bool:
+        """Detect bind/TCP/permission startup errors from the daemon."""
+        msg = str(exc).lower()
+        return any(
+            token in msg
+            for token in ("failed to bind tcp", "os error 10013", "access permissions", "eacces")
+        )
+
+    async def _cleanup_agent_browser_processes(self, session: str) -> None:
+        """
+        Kill stale agent-browser processes for a given session and free socket resources.
+        Best-effort; failures are non-fatal because startup may still recover.
+        """
+        if os.name != "nt":
+            return
+        try:
+            ps_script = f"""
+            $target = '{session}'
+            Get-CimInstance Win32_Process -Filter \"name='node.exe'\" |
+              Where-Object {{ $_.CommandLine -like '*agent-browser*' -and $_.CommandLine -like \"*{target}*\" }} |
+              ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}
+            """
+            proc1 = await asyncio.create_subprocess_exec(
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                ps_script,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                cwd=str(_PROJECT_ROOT),
+            )
+            await proc1.wait()
+            await asyncio.sleep(1)
+            ps_script2 = "Get-Process agent-browser-win32-x64.exe,node.exe,chrome.exe -ErrorAction SilentlyContinue | " \
+                "Stop-Process -Force -ErrorAction SilentlyContinue"
+            proc2 = await asyncio.create_subprocess_exec(
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                ps_script2,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                cwd=str(_PROJECT_ROOT),
+            )
+            await proc2.wait()
+            await asyncio.sleep(1)
+        except Exception:
+            logger.debug("Failed to cleanup session processes for '{}'", session)
 
     async def stop(self) -> None:
         """Gracefully close the browser."""
@@ -297,9 +414,14 @@ class BrowserEngine:
             raise RuntimeError("Browser not started. Call start() first.")
         return self._context
 
-    async def _run_json(self, command_args: list[str], timeout: int | None = None) -> dict[str, Any]:
+    async def _run_json(
+        self,
+        command_args: list[str],
+        timeout: int | None = None,
+        use_profile: bool = True,
+    ) -> dict[str, Any]:
         if not AGENT_BROWSER_CLIENT.exists():
-            raise RuntimeError(f"agent-browser client not found: {AGENT_BROWSER_CLIENT}")
+            raise RuntimeError(f"agent-browser not found: {AGENT_BROWSER_CLIENT}")
 
         args = [
             "node",
@@ -307,25 +429,95 @@ class BrowserEngine:
             "--json",
             "--session",
             self.session_name,
-            "--profile",
-            str(self.profile_dir),
+            "--session-name",
+            AGENT_BROWSER_PERSISTENT_SESSION,
         ]
+        if use_profile:
+            args.extend(["--profile", str(self.profile_dir)])
         if not settings.headless:
             args.append("--headed")
         args.extend(command_args)
 
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(AGENT_BROWSER_ROOT),
-        )
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(),
-            timeout=(timeout or self.default_timeout) / 1000,
-        )
-        out_text = stdout.decode("utf-8", errors="ignore").strip()
-        err_text = stderr.decode("utf-8", errors="ignore").strip()
+        # Env vars avoid shell quoting issues with paths containing spaces (e.g. O:\D temp\...)
+        env = os.environ.copy()
+        env["AGENT_BROWSER_SESSION"] = self.session_name
+        env["AGENT_BROWSER_SESSION_NAME"] = AGENT_BROWSER_PERSISTENT_SESSION
+        if use_profile:
+            env["AGENT_BROWSER_PROFILE"] = str(self.profile_dir)
+        env["AGENT_BROWSER_CONFIRM_INTERACTIVE"] = "0"  # Auto-deny prompts when stdin not TTY
+
+        # Use shell on Windows so agent-browser gets same env as interactive terminal (avoids timeout)
+        use_shell = os.name == "nt"
+        timeout_sec = (timeout or self.default_timeout) / 1000
+
+        # Strategy: redirect output to temp file to avoid pipe buffer deadlock (Chrome writes a lot to stderr)
+        out_file = tempfile.NamedTemporaryFile(mode="w+b", suffix=".txt", delete=False)
+        out_path = out_file.name
+        out_file.close()
+        try:
+            if use_shell:
+                # Quote args with space, backslash, or & (cmd.exe treats & as command separator)
+                def _quote_arg(a: str) -> str:
+                    s = str(a)
+                    if " " in s or "\\" in s or "&" in s or "|" in s or "<" in s or ">" in s:
+                        return f'"{s}"'
+                    return s
+
+                parts = [_quote_arg(a) for a in args]
+                cmd = " ".join(parts)
+                # Redirect to file so we avoid pipe blocking; agent-browser/Chrome write heavily to stderr
+                cmd_redirect = f'{cmd} > "{out_path}" 2>&1'
+                proc = await asyncio.create_subprocess_shell(
+                    cmd_redirect,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    cwd=str(_PROJECT_ROOT),
+                    env=env,
+                )
+            else:
+                with open(out_path, "wb") as f:
+                    proc = await asyncio.create_subprocess_exec(
+                        *args,
+                        stdout=f,
+                        stderr=asyncio.subprocess.STDOUT,
+                        stdin=asyncio.subprocess.DEVNULL,
+                        cwd=str(_PROJECT_ROOT),
+                        env=env,
+                    )
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=timeout_sec)
+                    except asyncio.TimeoutError:
+                        proc.kill()
+                        try:
+                            await proc.wait()
+                        except Exception:
+                            pass
+                        with open(out_path, "rb") as rf:
+                            out_text = rf.read().decode("utf-8", errors="ignore").strip()
+                        raise TimeoutError(
+                            f"agent-browser timed out after {timeout_sec}s. Last output: {out_text[:500]}"
+                        )
+            if use_shell:
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=timeout_sec)
+                except asyncio.TimeoutError:
+                    proc.kill()
+                    try:
+                        await proc.wait()
+                    except Exception:
+                        pass
+                    with open(out_path, "rb") as rf:
+                        out_text = rf.read().decode("utf-8", errors="ignore").strip()
+                    raise TimeoutError(
+                        f"agent-browser timed out after {timeout_sec}s. Last output: {out_text[:500]}"
+                    )
+            with open(out_path, "rb") as rf:
+                out_text = rf.read().decode("utf-8", errors="ignore").strip()
+            err_text = ""
+        finally:
+            with contextlib.suppress(Exception):
+                os.unlink(out_path)
         if err_text:
             logger.debug("agent-browser stderr: {}", err_text[:500])
 
@@ -343,6 +535,8 @@ class BrowserEngine:
         return data
 
     def _should_retry_with_temp_profile(self, exc: Exception) -> bool:
+        if isinstance(exc, TimeoutError):
+            return True
         message = str(exc).lower()
         retry_markers = (
             "launchpersistentcontext",

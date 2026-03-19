@@ -42,6 +42,32 @@ SEARCH_URL = (
     "&start={start}"
 )
 
+FALLBACK_SEARCH_URL = (
+    "https://www.linkedin.com/jobs/search/?"
+    "keywords={keywords}"
+    "&location={location}"
+    "&f_WT=2"
+    "&sortBy=DD"
+    "&start={start}"
+)
+
+SEARCH_BLOCKED_URL_MARKERS = (
+    "/checkpoint",
+    "/challenge",
+    "/authwall",
+    "/uas/login",
+    "/login",
+)
+
+SEARCH_BLOCKED_TEXT_MARKERS = (
+    "verify your identity",
+    "security verification",
+    "security check",
+    "captcha",
+    "hcaptcha",
+    "detected unusual activity",
+)
+
 # Selectors for the scrollable job-list sidebar (LinkedIn changes these)
 JOB_LIST_CONTAINER_SELECTORS = [
     ".jobs-search-results-list",
@@ -81,31 +107,10 @@ class LinkedInSearch:
 
         for page_num in range(max_pages):
             start = page_num * 25
-            url = SEARCH_URL.format(
-                keywords=quote_plus(keyword),
-                location=quote_plus(location),
-                start=start,
-            )
             logger.info("Searching: keyword='{}', page={}, have={}/{} jobs",
                         keyword, page_num + 1, len(all_jobs), min_jobs)
 
-            try:
-                await self.browser.goto(url)
-            except Exception as nav_err:
-                logger.warning("Navigation failed for page {}: {} — skipping page",
-                               page_num + 1, str(nav_err)[:120])
-                break
-            await asyncio.sleep(3)
-
-            # Wait for job cards to load
-            loaded = False
-            for sel in JOB_LIST_CONTAINER_SELECTORS:
-                try:
-                    await self.browser.wait_for_selector(sel, timeout=12000)
-                    loaded = True
-                    break
-                except Exception:
-                    continue
+            loaded = await self._open_search_page(keyword, location, start, page_num)
 
             if not loaded:
                 logger.warning("Job search results did not load for page {}", page_num + 1)
@@ -141,7 +146,13 @@ class LinkedInSearch:
                     await asyncio.sleep(0.3)
 
             # ── Extract job cards ───────────────────────────────────────
-            jobs = await self._extract_job_cards(keyword)
+            try:
+                jobs = await self._extract_job_cards(keyword)
+            except Exception as e:
+                logger.error("Failed extracting jobs for page {}: {}",
+                             page_num + 1, str(e)[:120])
+                await self.browser.take_screenshot(f"search_extract_error_p{page_num}")
+                break
             if not jobs:
                 logger.info("No job cards found on page {}", page_num + 1)
                 break
@@ -169,6 +180,135 @@ class LinkedInSearch:
                      keyword, len(all_jobs), min_jobs)
         return all_jobs
 
+    async def _open_search_page(
+        self,
+        keyword: str,
+        location: str,
+        start: int,
+        page_num: int,
+    ) -> bool:
+        """
+        Open search page with retries and fallback query.
+        Handles blocked pages by taking a checkpoint pause window.
+        """
+        encoded_keyword = quote_plus(keyword)
+        encoded_location = quote_plus(location)
+        attempts = [
+            SEARCH_URL,
+            FALLBACK_SEARCH_URL,
+        ]
+
+        for idx, template in enumerate(attempts):
+            url = template.format(
+                keywords=encoded_keyword,
+                location=encoded_location,
+                start=start,
+            )
+            max_tries = 2 if idx == 0 else 1
+            for attempt in range(1, max_tries + 1):
+                logger.debug(
+                    "Loading search page attempt {} for '{}' (template {}, page {})",
+                    attempt,
+                    keyword,
+                    idx + 1,
+                    page_num + 1,
+                )
+                try:
+                    # Use a slightly longer timeout on recovery retry passes.
+                    await self.browser.goto(url, wait_until="domcontentloaded")
+                    await asyncio.sleep(3 if attempt == 1 else 5)
+                except Exception as nav_err:
+                    logger.warning("Search navigation failed (template {}, attempt {}): {}",
+                                   idx + 1,
+                                   attempt,
+                                   str(nav_err)[:120])
+                    if attempt < max_tries:
+                        await self._recover_search_context()
+                        await asyncio.sleep(4)
+                        continue
+                    break
+
+                if await self._is_search_blocked():
+                    logger.warning("Search page appears blocked on page {}", page_num + 1)
+                    if not await self._handle_search_checkpoint(page_num):
+                        return False
+                    if attempt < max_tries:
+                        await asyncio.sleep(3)
+                        continue
+                    break
+
+                wait_timeout_ms = 22000 if idx == 0 and attempt > 1 else (16000 - (idx * 3000))
+                if await self._wait_for_job_list(timeout_ms=wait_timeout_ms):
+                    return True
+
+                logger.warning("Job list did not render for page {} (template {}, attempt {})",
+                               page_num + 1, idx + 1, attempt)
+                # Network/rendering instability on search pages can be transient.
+                # Reset navigation context and retry once before switching template.
+                if attempt < max_tries:
+                    await self._recover_search_context()
+                    await asyncio.sleep(2.5)
+                    continue
+
+                if await self._is_search_blocked():
+                    if not await self._handle_search_checkpoint(page_num):
+                        return False
+                await asyncio.sleep(3 + attempt)
+
+            if idx == 0:
+                logger.warning("Switching to fallback search URL for page {}", page_num + 1)
+
+        return False
+
+    async def _recover_search_context(self) -> None:
+        """
+        Reset navigation context after transient network/LinkedIn instability.
+        Going back to feed first usually clears hung request state before reloading search.
+        """
+        try:
+            await self.browser.goto("https://www.linkedin.com/feed/")
+            await asyncio.sleep(1.2)
+        except Exception as e:
+            logger.debug("Search recovery pre-step to feed failed: {}", str(e)[:120])
+        await asyncio.sleep(0.5)
+
+    async def _wait_for_job_list(self, timeout_ms: int = 16000) -> bool:
+        """Wait for any known job-list container selector to appear."""
+        for sel in JOB_LIST_CONTAINER_SELECTORS:
+            try:
+                await self.browser.wait_for_selector(sel, timeout=timeout_ms)
+                return True
+            except Exception:
+                continue
+        return False
+
+    async def _is_search_blocked(self) -> bool:
+        """Detect login wall/challenge/restriction screens."""
+        current_url = await self.browser.get_current_url()
+        if any(marker in current_url for marker in SEARCH_BLOCKED_URL_MARKERS):
+            return True
+
+        try:
+            body_text = (await self.browser.get_page_text()).lower()
+            return any(marker in body_text for marker in SEARCH_BLOCKED_TEXT_MARKERS)
+        except Exception:
+            return False
+
+    async def _handle_search_checkpoint(self, page_num: int) -> bool:
+        """
+        Keep a short checkpoint window for manual LinkedIn verification.
+        Returns True if page becomes usable again.
+        """
+        await self.browser.take_screenshot(f"search_checkpoint_p{page_num}")
+        logger.warning("Possible login/security checkpoint on search page {}. "
+                       "Solve it in the open browser if needed.",
+                       page_num + 1)
+        for _ in range(8):
+            await asyncio.sleep(5)
+            if not await self._is_search_blocked():
+                return True
+        return False
+
     async def _detect_card_selector(self) -> str:
         """Detect which job-card CSS selector is active on this page."""
         page = self.browser.page
@@ -176,9 +316,13 @@ class LinkedInSearch:
             ".jobs-search-results__list-item",
             "li.ember-view.jobs-search-results__list-item",
             ".job-card-container",
+            ".job-search-card",
+            ".job-card-container--clickable",
+            "li.job-card-container",
             "[data-occludable-job-id]",
             "li[data-occludable-job-id]",
             ".scaffold-layout__list-item",
+            ".jobs-search-results__list-item .job-card-container__link",
         ]
         for sel in candidates:
             count = await page.locator(sel).count()

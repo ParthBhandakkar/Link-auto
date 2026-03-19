@@ -25,6 +25,24 @@ from profile import PROFILE
 from utils.helpers import human_delay
 
 
+APPLY_BLOCKED_URL_MARKERS = (
+    "/checkpoint",
+    "/challenge",
+    "/authwall",
+    "/uas/login",
+    "/login",
+)
+
+APPLY_BLOCKED_TEXT_MARKERS = (
+    "verify your identity",
+    "security verification",
+    "security check",
+    "captcha",
+    "hcaptcha",
+    "detected unusual activity",
+)
+
+
 class LinkedInApply:
     """
     Applies to LinkedIn jobs — both Easy Apply and external redirects.
@@ -57,6 +75,14 @@ class LinkedInApply:
             return result
 
         try:
+            if await self._is_apply_blocked():
+                logger.warning("LinkedIn blocked before opening job '{}' — entering checkpoint flow.",
+                               job.job_id)
+                if not await self._handle_apply_checkpoint(job.job_id):
+                    result.status = JobStatus.FAILED
+                    result.errors.append("Checkpoint not resolved before apply")
+                    return result
+
             # Step 1: Open the job in search context so the panel loads
             result.steps_completed.append(ApplicationStep.OPEN_JOB)
             opened = await self._open_job_in_search_context(job)
@@ -136,34 +162,71 @@ class LinkedInApply:
         )
         logger.info("Opening job {} in search context", job.job_id)
 
-        try:
-            await self.browser.goto(url)
-        except Exception as e:
-            logger.warning("Navigation failed: {} — retrying once", str(e)[:100])
-            try:
-                await asyncio.sleep(3)
-                await self.browser.goto(url)
-            except Exception:
-                return False
-
-        await asyncio.sleep(4)
-
-        # Wait for the detail panel to render
         detail_selectors = [
             "#job-details",
             ".jobs-description__content",
             ".jobs-box__html-content",
             ".jobs-unified-top-card",
         ]
+
+        for attempt in range(1, 3):
+            logger.debug("Opening job {} (attempt {})", job.job_id, attempt)
+            try:
+                await self.browser.goto(url)
+            except Exception as e:
+                logger.warning("Navigation failed (attempt {}): {} — retrying once",
+                               attempt, str(e)[:100])
+                if attempt == 2:
+                    return False
+                await asyncio.sleep(3)
+                continue
+
+            await asyncio.sleep(4 if attempt == 1 else 5)
+
+            if await self._is_apply_blocked():
+                logger.warning("Search/apply page blocked during job open for {} (attempt {})",
+                               job.job_id, attempt)
+                if await self._handle_apply_checkpoint(job.job_id):
+                    continue
+                return False
+
+            if await self._wait_for_job_panel(detail_selectors):
+                logger.debug("Job panel loaded for job {} on attempt {}", job.job_id, attempt)
+                return True
+
+            # Fallback: try to click the card matching this job ID
+            if await self._open_job_from_card(job, detail_selectors):
+                logger.debug("Job panel loaded via card click fallback for {}", job.job_id)
+                return True
+
+            if await self._is_apply_blocked():
+                logger.warning("Blocked after panel checks for {} (attempt {})",
+                               job.job_id, attempt)
+                if await self._handle_apply_checkpoint(job.job_id):
+                    continue
+                return False
+
+            logger.debug("Job panel still not ready after attempt {} for {}", attempt, job.job_id)
+            if attempt == 1:
+                await asyncio.sleep(2)
+
+        logger.warning("Job panel did not load for job {}", job.job_id)
+        return False
+
+    async def _wait_for_job_panel(self, detail_selectors: list[str], timeout_ms: int = 8000) -> bool:
+        """Wait for one of the known job-detail selectors."""
         for sel in detail_selectors:
             try:
-                await self.browser.wait_for_selector(sel, timeout=8000)
+                await self.browser.wait_for_selector(sel, timeout=timeout_ms)
                 logger.debug("Job panel loaded (selector: {})", sel)
                 return True
             except Exception:
                 continue
+        return False
 
-        # Fallback: try to click the card matching this job ID
+    async def _open_job_from_card(self, job: Job, detail_selectors: list[str]) -> bool:
+        """Fallback card click path when URL-based open does not render panel."""
+        page = self.browser.page
         card_selectors = [
             f"[data-occludable-job-id='{job.job_id}']",
             f"[data-job-id='{job.job_id}']",
@@ -177,25 +240,56 @@ class LinkedInApply:
                     await asyncio.sleep(0.3)
                     await self.browser.human_click(locator)
                     await asyncio.sleep(3)
-                    # Check if panel loaded now
-                    for dsel in detail_selectors[:2]:
-                        try:
-                            await self.browser.wait_for_selector(dsel, timeout=5000)
-                            logger.debug("Job panel loaded after card click")
-                            return True
-                        except Exception:
-                            continue
+                    if await self._wait_for_job_panel(detail_selectors):
+                        logger.debug("Job panel loaded after card click (selector: {})", sel)
+                        return True
                 except Exception:
                     continue
-
-        logger.warning("Job panel did not load for job {}", job.job_id)
         return False
-        return result
+
+    async def _is_apply_blocked(self) -> bool:
+        """Detect login wall/challenge or anti-bot block pages."""
+        current_url = (await self.browser.get_current_url()).lower()
+        if any(marker in current_url for marker in APPLY_BLOCKED_URL_MARKERS):
+            return True
+        try:
+            body_text = (await self.browser.get_page_text()).lower()
+            return any(marker in body_text for marker in APPLY_BLOCKED_TEXT_MARKERS)
+        except Exception:
+            return False
+
+    async def _handle_apply_checkpoint(self, job_id: str) -> bool:
+        """
+        Pause to let user resolve LinkedIn verification and poll until page becomes usable again.
+        """
+        await self.browser.take_screenshot(f"apply_checkpoint_{job_id}")
+        logger.warning(
+            "Possible LinkedIn checkpoint while applying to job {}. "
+            "If prompted, complete verification in the browser and wait.",
+            job_id,
+        )
+        for _ in range(8):
+            await asyncio.sleep(5)
+            if not await self._is_apply_blocked():
+                logger.info("Checkpoint resolved for job {}", job_id)
+                return True
+            logger.debug("Waiting for checkpoint resolution in apply mode…")
+        logger.error("Apply-mode checkpoint not resolved in time for job {}", job_id)
+        return False
 
     # ── Easy Apply flow ─────────────────────────────────────────────────
     async def _do_easy_apply(self, job: Job, result: ApplicationResult) -> bool:
         """Handle the LinkedIn Easy Apply flow."""
         page = self.browser.page
+
+        if await self._is_apply_blocked():
+            logger.warning("Apply flow blocked before easy-apply start for job {}", job.job_id)
+            if not await self._handle_apply_checkpoint(job.job_id):
+                result.errors.append("Blocked by LinkedIn before Easy Apply")
+                return False
+            if not await self._open_job_in_search_context(job):
+                result.errors.append("Could not reopen job after checkpoint")
+                return False
 
         # Click the Easy Apply button
         clicked = await self._click_easy_apply()
@@ -214,6 +308,16 @@ class LinkedInApply:
 
         for page_num in range(max_pages):
             logger.info("Easy Apply -- processing page {}", page_num + 1)
+            if await self._is_apply_blocked():
+                logger.warning("LinkedIn blocked during Easy Apply on page {} for job {}",
+                               page_num + 1, job.job_id)
+                if not await self._handle_apply_checkpoint(job.job_id):
+                    result.errors.append("Checkpoint detected during Easy Apply flow")
+                    return False
+                if not await self._open_job_in_search_context(job):
+                    result.errors.append("Could not reopen job after checkpoint during Easy Apply")
+                    return False
+                continue
 
             # Dismiss any blocking confirmation dialog layered on top of the form.
             await self._dismiss_blocking_dialogs()
@@ -396,6 +500,16 @@ class LinkedInApply:
     async def _do_external_apply(self, job: Job, result: ApplicationResult) -> bool:
         """Handle external application links."""
         page = self.browser.page
+        if await self._is_apply_blocked():
+            logger.warning("LinkedIn blocked before external apply for job {}", job.job_id)
+            if not await self._handle_apply_checkpoint(job.job_id):
+                result.errors.append("Blocked by LinkedIn before external apply")
+                result.status = JobStatus.EXTERNAL
+                return False
+            if not await self._open_job_in_search_context(job):
+                result.errors.append("Could not reopen job after checkpoint before external apply")
+                result.status = JobStatus.EXTERNAL
+                return False
 
         # Find the Apply button (not Easy Apply)
         apply_selectors = [
@@ -414,6 +528,16 @@ class LinkedInApply:
                     await self.browser.human_click(locator)
                     clicked = True
                     break
+            if await self._is_apply_blocked():
+                logger.warning("Blocked while locating external apply button for job {}", job.job_id)
+                if not await self._handle_apply_checkpoint(job.job_id):
+                    result.errors.append("Checkpoint detected while locating external apply")
+                    result.status = JobStatus.EXTERNAL
+                    return False
+                if not await self._open_job_in_search_context(job):
+                    result.errors.append("Could not reopen job after checkpoint while locating external apply")
+                    result.status = JobStatus.EXTERNAL
+                    return False
 
         if not clicked:
             result.errors.append("Could not find external apply button")

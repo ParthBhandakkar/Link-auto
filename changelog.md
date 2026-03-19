@@ -1,5 +1,90 @@
 # Changelog
 
+## 19-Mar-2026 23:45:00 IST
+
+- Re-guarded agent-browser startup for Windows bind failures:
+  - added bind-aware restart loop in `browser/engine.py` to rotate session names (`safe`, `safe-1-*`, ...),
+  - cleanup stale session-bound agent-browser/chrome processes between attempts, then retry startup,
+  - preserved temporary-profile fallback for timeout/profile errors when bind errors are not involved.
+
+## 19-Mar-2026 23:58:00 IST
+
+- Fixed flaky LinkedIn login selector timeouts in `linkedin/auth.py`:
+  - added JavaScript DOM fallback to locate/fill login fields and submit without long
+    selector-wait loops,
+  - reduced login-form wait timeouts for selector-based strategy to avoid repeated 19s stalls.
+
+## 19-Mar-2026 23:59:00 IST
+
+- Hardened LinkedIn persistence checks to reduce repeated OTP prompts:
+  - fixed async login-path bug (`_fill_login_form_via_javascript()` was not awaited),
+  - added cookie-based logged-in detection in `linkedin/auth.py` to prefer reused sessions,
+  - enabled fixed agent-browser `--session-name` (`link-auto-apply`) so auth state is persisted explicitly while keeping existing bind-safe session fallback logic.
+
+## 20-Mar-2026 00:05:00 IST
+
+- Improved search-page resilience in `linkedin/search.py` for intermittent connection/drop pages:
+  - added recovery reset helper to return to feed and retry search context before switching templates,
+  - added retry with longer job-list wait for second/recurring attempts,
+  - added recovery pauses after navigation/list-render failures to improve continuation before keyword-level fallback.
+
+## 17-Mar-2026 20:50:00 IST
+
+- Apply-mode resilience added to handle LinkedIn checkpoint/login-wall interruptions:
+  - added blocked-page detection and 40-second checkpoint wait/recovery loop in `linkedin/apply.py`,
+  - added open-job retries that retry after checkpoint clearance and fall back to card-click reopening,
+  - added checkpoint checks inside Easy Apply and external apply flows before and during application actions.
+
+## 15-Mar-2026 18:20:00 IST
+
+- Improve login reuse and search recovery reliability:
+  - broadened `linkedin/auth.py` login state checks with multi-pass `_is_already_logged_in()` polling so temporary redirects/slow renders are not misclassified as logout,
+  - added search-side resilience in `linkedin/search.py` via blocked/checkpoint detection, retry loops, and fallback URL retry before skipping pages.
+
+## 17-Mar-2026 00:00:00 IST
+
+- Restore browser profile usage on startup (`use_profile=True`) so LinkedIn session/cookies are reused across runs when `browser.engine` can open with profile; still falls back to temporary profile on profile-related startup failures.
+
+## 17-Mar-2026 19:20:00 IST
+
+- Improve scrape stability:
+  - strengthened logged-in detection in `linkedin/auth.py` (URL + persistent session UI markers) before forcing login,
+  - added broader/fallback LinkedIn job-search URL and more resilient page-load/error handling in `linkedin/search.py` to reduce false failures on unstable pages.
+
+## 16-Mar-2026 00:55:00 IST
+
+- Make `Ctrl+C`/interrupt automatically run browser cleanup by installing signal handlers and calling `--kill-browser` cleanup on `KeyboardInterrupt` across pipeline modes.
+
+## 16-Mar-2026 00:40:00 IST
+
+- Add `python main.py --kill-browser` to close agent-browser and kill leftover daemon (use when browser keeps opening after closing terminal)
+- Make --kill-browser more aggressive on Windows: also kill chrome.exe and Python main.py processes (stops respawn loop)
+
+## 16-Mar-2026 00:35:00 IST
+
+- Fix Windows TCP bind 10013 (EACCES): use session "safe" on Windows so agent-browser daemon binds to port 49252 instead of excluded range 50766-50865 (agent-browser issue #132)
+
+## 16-Mar-2026 00:25:00 IST
+
+- Fix Windows "cannot find file 0": quote URL args in shell (cmd.exe treats & as separator; &start=0 was parsed as `start` command)
+
+## 16-Mar-2026 00:20:00 IST
+
+- LinkedIn login: explicit wait for URL change (wait --url "**/feed") after submit; retry Sign in via find role button if still on /login
+
+## 16-Mar-2026 00:15:00 IST
+
+- LinkedIn login: wait for networkidle, try multiple selectors (#username, input[name=session_key]), fallback to semantic find (label "Email or phone", "Password")
+- Added credentials check (LINKEDIN_EMAIL, LINKEDIN_PASSWORD) before login attempt
+
+## 15-Mar-2026 23:50:00 IST
+
+- agent-browser timeout fix: redirect stdout/stderr to temp file instead of PIPE (Chrome writes heavily to stderr; pipe buffer filled and caused deadlock)
+- First attempt without --profile to avoid profile lock/slow drive hangs
+- Added stdin=DEVNULL and AGENT_BROWSER_CONFIRM_INTERACTIVE=0 to prevent process waiting for input
+- Use env vars (AGENT_BROWSER_SESSION, AGENT_BROWSER_PROFILE) to avoid shell quoting issues with paths
+- Added --test-browser flag for minimal agent-browser debugging (open about:blank, no profile)
+
 ## 15-Mar-2026 (ports)
 
 - `python main.py --dashboard` now auto-starts API server in background; single command
