@@ -299,7 +299,11 @@ class BrowserEngine:
                     "Browser launch failed (timeout or profile); retrying with temporary profile: {}",
                     str(exc)[:200],
                 )
-                await self.stop()
+                # Failed open rarely has a live browser for agent-browser "close"; skip close RPC, then hard-clean so
+                # the next open does not stack another Chrome on orphans left from the last attempt.
+                await self.stop(try_close=False)
+                await self._cleanup_agent_browser_processes(self.session_name)
+                await asyncio.sleep(1.5)
                 self.profile_dir = Path(tempfile.mkdtemp(prefix="agent_browser_profile_", dir=str(BROWSER_DATA_DIR)))
                 self._owns_temp_profile = True
                 self._page = AgentPage(self)
@@ -397,17 +401,29 @@ class BrowserEngine:
                 cwd=str(_PROJECT_ROOT),
             )
             await proc2.wait()
-            await asyncio.sleep(1)
+            # Tree-kill Chrome: Stop-Process can leave short-lived child windows; /T matches taskmgr "End process tree".
+            tk = await asyncio.create_subprocess_exec(
+                "taskkill",
+                "/F",
+                "/IM",
+                "chrome.exe",
+                "/T",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await tk.wait()
+            await asyncio.sleep(2)
         except Exception:
             logger.debug("Failed to cleanup session processes for '{}'", session)
 
-    async def stop(self) -> None:
-        """Gracefully close the browser."""
+    async def stop(self, *, try_close: bool = True) -> None:
+        """Gracefully close the browser. Set try_close=False after a failed open (close RPC is useless and adds noise)."""
         logger.info("Stopping agent-browser engine…")
-        try:
-            await self._run_json(["close"], timeout=5000)
-        except Exception:
-            pass
+        if try_close:
+            try:
+                await self._run_json(["close"], timeout=5000)
+            except Exception:
+                pass
         self._page = None
         self._context = None
         if self._owns_temp_profile and self.profile_dir.exists():
@@ -461,8 +477,10 @@ class BrowserEngine:
             env["AGENT_BROWSER_PROFILE"] = str(self.profile_dir)
         env["AGENT_BROWSER_CONFIRM_INTERACTIVE"] = "0"  # Auto-deny prompts when stdin not TTY
 
-        # Use shell on Windows so agent-browser gets same env as interactive terminal (avoids timeout)
-        use_shell = os.name == "nt"
+        # Always subprocess_exec (never cmd.exe /c): in-page nav uses eval args like
+        # window.location.href = "https://...?a=1&b=2&start=0"; — cmd treats unescaped " and & as
+        # syntax, splits the line into extra "commands" (e.g. start=0), and Windows shows bogus
+        # "cannot find 0;" dialogs. Exec passes argv verbatim; env is the same as shell.
         timeout_sec = (timeout or self.default_timeout) / 1000
 
         # Strategy: redirect output to temp file to avoid pipe buffer deadlock (Chrome writes a lot to stderr)
@@ -470,50 +488,15 @@ class BrowserEngine:
         out_path = out_file.name
         out_file.close()
         try:
-            if use_shell:
-                # Quote args with space, backslash, or & (cmd.exe treats & as command separator)
-                def _quote_arg(a: str) -> str:
-                    s = str(a)
-                    if " " in s or "\\" in s or "&" in s or "|" in s or "<" in s or ">" in s:
-                        return f'"{s}"'
-                    return s
-
-                parts = [_quote_arg(a) for a in args]
-                cmd = " ".join(parts)
-                # Redirect to file so we avoid pipe blocking; agent-browser/Chrome write heavily to stderr
-                cmd_redirect = f'{cmd} > "{out_path}" 2>&1'
-                proc = await asyncio.create_subprocess_shell(
-                    cmd_redirect,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
+            with open(out_path, "wb") as f:
+                proc = await asyncio.create_subprocess_exec(
+                    *args,
+                    stdout=f,
+                    stderr=asyncio.subprocess.STDOUT,
                     stdin=asyncio.subprocess.DEVNULL,
                     cwd=str(_PROJECT_ROOT),
                     env=env,
                 )
-            else:
-                with open(out_path, "wb") as f:
-                    proc = await asyncio.create_subprocess_exec(
-                        *args,
-                        stdout=f,
-                        stderr=asyncio.subprocess.STDOUT,
-                        stdin=asyncio.subprocess.DEVNULL,
-                        cwd=str(_PROJECT_ROOT),
-                        env=env,
-                    )
-                    try:
-                        await asyncio.wait_for(proc.wait(), timeout=timeout_sec)
-                    except asyncio.TimeoutError:
-                        proc.kill()
-                        try:
-                            await proc.wait()
-                        except Exception:
-                            pass
-                        with open(out_path, "rb") as rf:
-                            out_text = rf.read().decode("utf-8", errors="ignore").strip()
-                        raise TimeoutError(
-                            f"agent-browser timed out after {timeout_sec}s. Last output: {out_text[:500]}"
-                        )
-            if use_shell:
                 try:
                     await asyncio.wait_for(proc.wait(), timeout=timeout_sec)
                 except asyncio.TimeoutError:

@@ -1,5 +1,13 @@
 # Changelog
 
+## 20-Mar-2026 14:30:00 IST
+
+- Reduce stacked Chrome windows on Windows startup retries: after a failed `open`, temp-profile fallback now calls `stop(try_close=False)` (skip useless `close` RPC), runs `_cleanup_agent_browser_processes` again, waits briefly, then opens; cleanup also runs `taskkill /F /IM chrome.exe /T` and a longer post-kill sleep so child processes die before the next launch.
+
+## 20-Mar-2026 12:00:00 IST
+
+- Fix Windows bogus “cannot find 0;” popups during job-search navigation: stop routing agent-browser through `cmd.exe` on Windows. `eval` args contain JSON-quoted URLs with `&` and `%2C…`; broken cmd quoting split the line so fragments like `start=0` invoked the shell. `_run_json` now always uses `asyncio.create_subprocess_exec` (argv only), same `env` as before.
+
 ## 19-Mar-2026 23:52:38 IST
 
 - Improve interrupt hard-cleanup and page navigation stability:
