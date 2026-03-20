@@ -1,0 +1,161 @@
+{
+  "session_start": "2026-03-20 02:28:27.726722",
+  "session_end": "2026-03-20 03:34:13.296409",
+  "total_found": 42,
+  "total_applied": 3,
+  "total_skipped": 7,
+  "total_failed": 1,
+  "total_external": 0,
+  "results": [
+    {
+      "job_title": "Python BackEnd Developer",
+      "company": "Office Solution AI Labs",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4385494272/",
+      "status": "applied",
+      "errors": [
+        "Could not fully fill form on page 4"
+      ],
+      "duration_seconds": 752.9346349239349,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    },
+    {
+      "job_title": "Staff Software Engineer - Python",
+      "company": "SailPoint",
+      "location": "Pune Division, Maharashtra, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4360775248/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "AI Engineer",
+      "company": "Uplers",
+      "location": "Kanpur, Uttar Pradesh, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387878024/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Machine Learning Engineer",
+      "company": "VBeyond Corporation",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387870518/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Data Scientist",
+      "company": "Apparel Group India Pvt. Ltd.",
+      "location": "Bengaluru, Karnataka, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387703789/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "AI Engineer",
+      "company": "OP",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4385467867/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Software Engineer",
+      "company": "Altisource",
+      "location": "Bengaluru, Karnataka, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4385471600/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "AI Engineer I (Remote)",
+      "company": "Sezzle",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4378066854/",
+      "status": "skipped",
+      "errors": [],
+      "duration_seconds": 0.0,
+      "steps": [
+        "open_job"
+      ]
+    },
+    {
+      "job_title": "Data Engineer (Knowledge Graph/Industrial Data)",
+      "company": "cerebre",
+      "location": "Mumbai, Maharashtra, India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387810807/",
+      "status": "failed",
+      "errors": [],
+      "duration_seconds": 24.71879816055298,
+      "steps": [
+        "open_job",
+        "external_apply"
+      ]
+    },
+    {
+      "job_title": "Software Engineer, Product Infrastructure",
+      "company": "Nucleus AI",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387312595/",
+      "status": "applied",
+      "errors": [],
+      "duration_seconds": 377.07524847984314,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    },
+    {
+      "job_title": "Backend Engineer, Product Platform",
+      "company": "Nucleus AI",
+      "location": "India (Remote)",
+      "url": "https://www.linkedin.com/jobs/view/4387314239/",
+      "status": "applied",
+      "errors": [],
+      "duration_seconds": 383.240571975708,
+      "steps": [
+        "open_job",
+        "click_apply",
+        "fill_form",
+        "submit",
+        "complete"
+      ]
+    }
+  ]
+}
