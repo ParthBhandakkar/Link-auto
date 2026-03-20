@@ -194,3 +194,4 @@
 - Added config/similarity_config.json
 - Added tests: test_job_similarity, test_vector_db, test_similarity_engine, test_clustering, test_integration
 - Added docs: VECTOR_DATABASE_GUIDE.md, SIMILARITY_API.md
+[IST 20-Mar-2026 12:33:52] - Fixed console logging path in utils/logger.py to sanitize Unicode for Windows cp1252 and prevent UnicodeEncodeError during main.py --apply runs.
